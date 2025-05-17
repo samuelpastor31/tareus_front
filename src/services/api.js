@@ -9,6 +9,17 @@ const apiClient = axios.create({
   },
 });
 
+// Add request interceptor to add the token to each request
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Token = token;
+  }
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
+
 export { apiClient };
 
 export default class ApiClient {
@@ -70,5 +81,11 @@ export default class ApiClient {
 }
 
 export function setAuthToken(token) {
+  localStorage.setItem('token', token);
   apiClient.defaults.headers.common['Token'] = token;
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem('token');
+  delete apiClient.defaults.headers.common['Token'];
 }

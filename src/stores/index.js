@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import ApiClient from "../services/api";
+import ApiClient, { clearAuthToken } from "../services/api";
 import { setAuthToken } from "../services/api";
 
 const apiClient = new ApiClient();
@@ -244,7 +244,7 @@ export const useDataStore = defineStore("data", {
     logout() {
       localStorage.removeItem("token");
       localStorage.setItem("loggedIn", "false");
-      setAuthToken(null);
+      clearAuthToken();
       this.loggedIn = false;
     },
 

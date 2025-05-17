@@ -66,6 +66,8 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: box-shadow 0.18s, background 0.18s;
+  width: 280px;
+  max-width: 280px;
 }
 .card:hover {
   background: #e0f7fa;
@@ -108,5 +110,19 @@ export default {
   font-weight: bold;
   margin-left: 0.3rem;
   font-size: 1.2em;
+}
+
+@media (max-width: 768px) {
+  .card {
+    width: 260px;
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 </style>

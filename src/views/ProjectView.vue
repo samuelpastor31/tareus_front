@@ -3,10 +3,23 @@ import { useDataStore } from "../stores/index.js";
 import { mapActions, mapState } from "pinia";
 import TaskItem from "../components/TaskItem.vue";
 import CardItem from "../components/CardItem.vue";
+import TrashItem from "../components/TrashItem.vue";
+import ConfirmModal from "../components/ConfirmModal.vue";
+import AddCardForm from "../components/AddCardForm.vue";
+import AddTaskForm from "../components/AddTaskForm.vue";
+import UnassignedTasksSection from "../components/UnassignedTasksSection.vue";
 
 export default {
-  name: "ProjectTasksView",
-  components: { TaskItem, CardItem },
+  name: "ProjectView",
+  components: {
+    TaskItem,
+    CardItem,
+    TrashItem,
+    ConfirmModal,
+    AddCardForm,
+    AddTaskForm,
+    UnassignedTasksSection,
+  },
   data() {
     return {
       projectId: null,
@@ -28,6 +41,13 @@ export default {
       dragOverCardId: null,
       dragOverUnassigned: false,
       isProcessingDrop: false,
+      isAddingCard: false,
+      loadingProject: false,
+      showTrashZone: false,
+      trashZoneActive: false,
+      showConfirmModal: false,
+      itemToDelete: null,
+      deleteType: null, // 'task' or 'card'
     };
   },
   computed: {
@@ -35,16 +55,48 @@ export default {
     project() {
       return this.projects.find((p) => p.id === Number(this.projectId));
     },
+    canCreate() {
+      return this.project?.ProjectUser?.can_create === true;
+    },
+    canEdit() {
+      return this.project?.ProjectUser?.can_edit === true;
+    },
+    canModifyTasksAndCards() {
+      return this.canCreate || this.canEdit;
+    },
+    hasUnassignedTasks() {
+      return this.tasksList.some((task) => !task.card_id);
+    },
   },
   methods: {
     ...mapActions(useDataStore, [
-      "fetchTasks", 
-      "createTask", 
-      "fetchCards", 
-      "createCard", 
-      "updateCard", 
-      "updateTaskCard"
+      "fetchTasks",
+      "createTask",
+      "fetchCards",
+      "createCard",
+      "updateCard",
+      "updateTaskCard",
+      "fetchProjects",
+      "fetchProject",
+      "deleteTask",
+      "deleteCard",
     ]),
+
+    async loadProject() {
+      this.loadingProject = true;
+      try {
+        await this.fetchProject(this.projectId);
+
+        if (!this.project) {
+          await this.fetchProjects();
+        }
+      } catch (e) {
+        this.error = "Error loading project details";
+        console.error("Error loading project:", e);
+      }
+      this.loadingProject = false;
+    },
+
     async loadTasks() {
       this.loading = true;
       this.error = "";
@@ -58,6 +110,7 @@ export default {
       }
       this.loading = false;
     },
+
     async loadCards() {
       this.loadingCards = true;
       try {
@@ -69,14 +122,17 @@ export default {
       }
       this.loadingCards = false;
     },
+
     onDragStart(task, idx, cardId = null, event) {
       this.draggingTask = { ...task, idx, sourceCardId: cardId };
-      this.draggingCard = null; 
-      
+      this.draggingCard = null;
+      this.showTrashZone = this.canCreate;
+
       if (event && event.target) {
-        event.target.setAttribute('dragging', 'true');
+        event.target.setAttribute("dragging", "true");
       }
     },
+
     onCardDragStart(card, idx, event) {
       if (this.draggingTask) {
         if (event) {
@@ -85,10 +141,12 @@ export default {
         }
         return;
       }
-      
+
       this.draggingCard = { ...card, idx };
       this.draggingTask = null;
+      this.showTrashZone = this.canCreate;
     },
+
     onDrop(idx) {
       if (this.draggingTask && typeof this.draggingTask.idx === "number") {
         const from = this.draggingTask.idx;
@@ -102,18 +160,26 @@ export default {
       }
       this.draggingTask = null;
     },
+
     onCardDrop(idx, event) {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
-      
+
       if (!this.draggingCard || this.draggingTask || this.isProcessingDrop) {
+        this.resetDragState();
         return;
       }
-      
+
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to reorder cards";
+        this.resetDragState();
+        return;
+      }
+
       this.isProcessingDrop = true;
-      
+
       if (typeof this.draggingCard.idx === "number") {
         const from = this.draggingCard.idx;
         const to = idx;
@@ -122,60 +188,64 @@ export default {
           const [moved] = updated.splice(from, 1);
           updated.splice(to, 0, moved);
           this.cardsList = updated;
-          
+
           this.updateCardPositions()
             .then(() => {
-              this.isProcessingDrop = false;
+              this.resetDragState();
             })
             .catch(() => {
-              this.isProcessingDrop = false;
+              this.resetDragState();
             });
         } else {
-          this.isProcessingDrop = false;
+          this.resetDragState();
         }
       } else {
-        this.isProcessingDrop = false;
+        this.resetDragState();
       }
       this.draggingCard = null;
     },
+
     onTaskDropOnCard(cardId, event) {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
-      
+
       if (this.isProcessingDrop) {
         return;
       }
-      
+
       if (!this.draggingTask) {
         return;
       }
-      
-      if (this.draggingTask.sourceCardId === cardId) {
-        this.draggingTask = null;
-        this.dragOverCardId = null;
+
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to assign tasks to cards";
+        this.resetDragState();
         return;
       }
-      
+
+      if (this.draggingTask.sourceCardId === cardId) {
+        this.resetDragState();
+        return;
+      }
+
       this.isProcessingDrop = true;
       const taskId = this.draggingTask.id;
-      
+
       this.updateTaskCard(taskId, cardId)
         .then(() => {
           return Promise.all([this.loadTasks(), this.loadCards()]);
         })
         .then(() => {
-          this.isProcessingDrop = false;
+          this.resetDragState();
         })
         .catch((error) => {
           this.error = "Error assigning task to card";
-          this.isProcessingDrop = false;
+          this.resetDragState();
         });
-      
-      this.draggingTask = null;
-      this.dragOverCardId = null;
     },
+
     allowDrop(event) {
       if (event) {
         event.preventDefault();
@@ -183,7 +253,7 @@ export default {
       }
       return this.draggingTask ? true : false;
     },
-    
+
     onDragEnter(cardId, event) {
       if (this.draggingTask) {
         if (this.draggingTask.sourceCardId !== cardId) {
@@ -193,68 +263,114 @@ export default {
         }
       }
     },
-    
+
     onDragLeave(event) {
       if (event) event.preventDefault();
       this.dragOverCardId = null;
     },
-    
+
     onDragEnterUnassigned(event) {
+      if (!this.hasUnassignedTasks) return;
+
       if (this.draggingTask && this.draggingTask.sourceCardId) {
         if (event) event.preventDefault();
         this.dragOverUnassigned = true;
         this.dragOverCardId = null;
       }
     },
-    
+
     onDragLeaveUnassigned(event) {
       if (event) event.preventDefault();
       this.dragOverUnassigned = false;
     },
+
     onDragEnd(event) {
       if (event && event.target) {
-        event.target.removeAttribute('dragging');
+        event.target.removeAttribute("dragging");
       }
+      setTimeout(() => {
+        this.resetDragState();
+      }, 100);
     },
-    
-    onTaskDropOnUnassigned(event) {
-      if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      
-      if (this.isProcessingDrop) {
-        return;
-      }
-      
-      if (!this.draggingTask) {
-        return;
-      }
-      
-      if (!this.draggingTask.sourceCardId) {
-        this.draggingTask = null;
-        this.dragOverUnassigned = false;
-        return;
-      }
-      
-      this.isProcessingDrop = true;
-      const taskId = this.draggingTask.id;
-      
-      this.updateTaskCard(taskId, null)
-        .then(() => {
-          return Promise.all([this.loadTasks(), this.loadCards()]);
-        })
-        .then(() => {
-          this.isProcessingDrop = false;
-        })
-        .catch(() => {
-          this.error = "Error unassigning task from card";
-          this.isProcessingDrop = false;
-        });
-      
-      this.draggingTask = null;
-      this.dragOverUnassigned = false;
+
+    onDragEnterTrash(event) {
+      event.preventDefault();
+      this.trashZoneActive = true;
     },
+
+    onDragLeaveTrash(event) {
+      event.preventDefault();
+      this.trashZoneActive = false;
+    },
+
+    onDropTrash(event) {
+      event.preventDefault();
+
+      if (!this.canCreate) {
+        this.resetDragState();
+        return;
+      }
+
+      if (this.draggingTask) {
+        this.itemToDelete = this.draggingTask;
+        this.deleteType = "task";
+        this.showConfirmModal = true;
+      } else if (this.draggingCard) {
+        this.itemToDelete = this.draggingCard;
+        this.deleteType = "card";
+        this.showConfirmModal = true;
+      }
+
+      this.trashZoneActive = false;
+    },
+
+    confirmDelete() {
+      if (!this.canCreate) {
+        this.showConfirmModal = false;
+        this.resetDragState();
+        return;
+      }
+
+      if (this.deleteType === "task" && this.itemToDelete) {
+        this.deleteTask(this.itemToDelete.id)
+          .then(() => {
+            return this.loadTasks();
+          })
+          .then(() => {
+            return this.loadCards();
+          })
+          .then(() => {
+            this.resetDragState();
+          })
+          .catch(() => {
+            this.error = "Error deleting task";
+            this.resetDragState();
+          });
+      } else if (this.deleteType === "card" && this.itemToDelete) {
+        this.deleteCard(this.itemToDelete.id)
+          .then(() => {
+            return this.loadCards();
+          })
+          .then(() => {
+            this.resetDragState();
+          })
+          .catch(() => {
+            this.error = "Error deleting card";
+            this.resetDragState();
+          });
+      }
+
+      this.showConfirmModal = false;
+      this.itemToDelete = null;
+      this.deleteType = null;
+    },
+
+    cancelDelete() {
+      this.showConfirmModal = false;
+      this.itemToDelete = null;
+      this.deleteType = null;
+    },
+
     async updateCardPositions() {
       const updatePromises = [];
       for (let i = 0; i < this.cardsList.length; i++) {
@@ -263,13 +379,14 @@ export default {
           updatePromises.push(
             this.updateCard({
               ...card,
-              position: i
+              position: i,
             })
           );
         }
       }
       return Promise.all(updatePromises);
     },
+
     async addTask() {
       if (!this.newTaskTitle.trim() || !this.newTaskDesc.trim()) return;
       try {
@@ -289,25 +406,46 @@ export default {
         this.error = "Error creating task";
       }
     },
+
     async addCard() {
       if (!this.newCardName.trim()) return;
       try {
-        const position = this.cardsList.length; // New card position is at the end
+        const position = this.cardsList.length;
         await this.createCard(this.projectId, {
           name: this.newCardName,
           description: this.newCardDescription || "",
-          position: position
+          position: position,
         });
         this.newCardName = "";
         this.newCardDescription = "";
         await this.loadCards();
         this.noCards = false;
+        this.isAddingCard = false;
       } catch (e) {
         this.error = "Error creating card";
       }
     },
-    
+
+    showAddCardForm() {
+      this.isAddingCard = true;
+      this.$nextTick(() => {
+        const input = document.getElementById("new-card-name");
+        if (input) input.focus();
+      });
+    },
+
+    cancelAddCard() {
+      this.isAddingCard = false;
+      this.newCardName = "";
+      this.newCardDescription = "";
+    },
+
     async assignTaskToCardHandler(taskId, cardId) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to assign tasks to cards";
+        return;
+      }
+
       try {
         await this.updateTaskCard(taskId, cardId === "" ? null : cardId);
         await this.loadTasks();
@@ -316,8 +454,13 @@ export default {
         this.error = "Error assigning task to card";
       }
     },
-    
+
     async removeTaskFromCardHandler(taskId, cardId) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to remove tasks from cards";
+        return;
+      }
+
       try {
         await this.updateTaskCard(taskId, null);
         await this.loadTasks();
@@ -326,9 +469,58 @@ export default {
         this.error = "Error removing task from card";
       }
     },
+
+    onTaskDropOnUnassigned(event) {
+      if (!this.hasUnassignedTasks) {
+        this.resetDragState();
+        return;
+      }
+
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to modify tasks";
+        this.resetDragState();
+        return;
+      }
+
+      if (!this.draggingTask || this.isProcessingDrop) {
+        return;
+      }
+
+      if (!this.draggingTask.sourceCardId) {
+        this.resetDragState();
+        return;
+      }
+
+      this.isProcessingDrop = true;
+      const taskId = this.draggingTask.id;
+
+      this.updateTaskCard(taskId, null)
+        .then(() => {
+          return Promise.all([this.loadTasks(), this.loadCards()]);
+        })
+        .then(() => {
+          this.resetDragState();
+        })
+        .catch((error) => {
+          this.error = "Error removing task from card";
+          this.resetDragState();
+        });
+    },
+
+    resetDragState() {
+      this.draggingTask = null;
+      this.draggingCard = null;
+      this.dragOverCardId = null;
+      this.dragOverUnassigned = false;
+      this.showTrashZone = false;
+      this.trashZoneActive = false;
+      this.isProcessingDrop = false;
+    },
   },
+
   async mounted() {
     this.projectId = this.$route.params.id;
+    await this.loadProject();
     await this.loadTasks();
     await this.loadCards();
   },
@@ -337,51 +529,39 @@ export default {
 
 <template>
   <div class="kanban-view">
-    <h2 v-if="project">Project: {{ project.name }}</h2>
-    
+    <div v-if="loadingProject" class="loading-msg">Loading project details...</div>
+    <h2 v-else-if="project">Project: {{ project.name }}</h2>
+    <h2 v-else class="error-msg">Project not found</h2>
+
     <!-- Form to add tasks -->
-    <form class="add-task-form" @submit.prevent="addTask">
-      <h3>Add New Task</h3>
-      <input v-model="newTaskTitle" type="text" placeholder="Task title" required />
-      <input v-model="newTaskDesc" type="text" placeholder="Task description" required />
-      <select v-model="newTaskPriority">
-        <option value="">Priority (optional)</option>
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
-      </select>
-      <select v-model="newTaskStatus">
-        <option value="">Status (optional)</option>
-        <option value="pending">Pending</option>
-        <option value="in_progress">In Progress</option>
-        <option value="completed">Completed</option>
-      </select>
-      <button type="submit">Add Task</button>
-    </form>
-    
-    <!-- Form to add cards -->
-    <form class="add-card-form" @submit.prevent="addCard">
-      <h3>Add New Card</h3>
-      <input v-model="newCardName" type="text" placeholder="Card name" required />
-      <input v-model="newCardDescription" type="text" placeholder="Card description (optional)" />
-      <button type="submit">Add Card</button>
-    </form>
+    <add-task-form
+      v-if="canCreate"
+      @add-task="
+        (taskData) => {
+          newTaskTitle = taskData.title;
+          newTaskDesc = taskData.description;
+          newTaskPriority = taskData.priority;
+          newTaskStatus = taskData.status;
+          addTask();
+        }
+      "
+    />
 
     <div v-if="loading || loadingCards" class="loading-msg">Loading...</div>
     <div v-if="error" class="error-msg">{{ error }}</div>
-    
+
     <!-- Cards section -->
     <div v-if="!loadingCards" class="cards-container">
-      <div v-if="noCards" class="no-cards-msg">No cards yet for this project. Create your first card.</div>
-      
-      <div class="cards-row" v-else>
-        <card-item 
-          v-for="(card, idx) in cardsList" 
+      <div class="cards-row">
+        <!-- Cards list -->
+        <card-item
+          v-for="(card, idx) in cardsList"
           :key="card.id"
           :card="card"
           :dragOverCardId="dragOverCardId"
           @card-dragstart="(card, event) => onCardDragStart(card, idx, event)"
           @card-drop="(card, event) => onCardDrop(idx, event)"
+          @card-dragend="onDragEnd"
           @task-drop="onTaskDropOnCard"
           @drag-enter="onDragEnter"
           @drag-leave="onDragLeave"
@@ -395,49 +575,87 @@ export default {
             @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)"
             @dragend="onDragEnd"
           >
-            <button @click="removeTaskFromCardHandler(task.id, card.id)" class="remove-from-card-btn">
+            <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)" class="remove-from-card-btn">
               Remove from card
             </button>
           </task-item>
         </card-item>
+
+        <!-- Add Card Form Component -->
+        <add-card-form
+          v-if="canCreate"
+          :is-adding="isAddingCard"
+          @show-form="showAddCardForm"
+          @cancel="cancelAddCard"
+          @add-card="
+            (cardData) => {
+              newCardName = cardData.name;
+              newCardDescription = cardData.description;
+              addCard();
+            }
+          "
+        />
       </div>
     </div>
-    
-    <!-- Unassigned tasks section -->
-    <div class="unassigned-tasks-section">
-      <h3>Unassigned Tasks</h3>
-      <div v-if="loading" class="tasks-loading">Loading tasks...</div>
-      <div v-else-if="noTasks" class="no-tasks-msg">No unassigned tasks yet for this project.</div>
-      
-      <div 
-        class="unassigned-container"
-        @dragover.prevent="allowDrop"
-        @dragenter.prevent="onDragEnterUnassigned"
-        @dragleave.prevent="onDragLeaveUnassigned"
-        @drop.stop="onTaskDropOnUnassigned"
-        :class="{ 'drag-over': dragOverUnassigned }"
-      >
-        <div class="tasks-row" v-if="!loading && !noTasks">
-          <task-item
-            v-for="(task, idx) in tasksList.filter(t => !t.card_id)"
-            :key="task.id"
-            :task="task"
-            class="unassigned-task"
-            draggable="true"
-            @dragstart="(e) => onDragStart(task, idx, null, e)"
-            @dragend="onDragEnd"
-          >
-            <div class="assign-to-card">
-              <select @change="e => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
-                <option value="">Assign to card</option>
-                <option v-for="card in cardsList" :key="card.id" :value="card.id">{{ card.name }}</option>
-              </select>
-            </div>
-          </task-item>
-        </div>
-      </div>
-    </div>
-    
+
+    <!-- Unassigned tasks section - only show if there are unassigned tasks -->
+    <unassigned-tasks-section
+      v-if="hasUnassignedTasks || loading"
+      :tasks="tasksList"
+      :cards="cardsList"
+      :loading="loading"
+      :noTasks="noTasks"
+      :dragOverUnassigned="dragOverUnassigned"
+      @drag-enter-unassigned="onDragEnterUnassigned"
+      @drag-leave-unassigned="onDragLeaveUnassigned"
+      @drop-on-unassigned="onTaskDropOnUnassigned"
+      @drag-start="onDragStart"
+      @drag-end="onDragEnd"
+      @assign-to-card="assignTaskToCardHandler"
+    >
+      <template #default="{ task, idx, cards }">
+        <task-item
+          :key="task.id"
+          :task="task"
+          class="unassigned-task"
+          draggable="true"
+          @dragstart="(e) => onDragStart(task, idx, null, e)"
+          @dragend="onDragEnd"
+        >
+          <div class="assign-to-card">
+            <select @change="(e) => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
+              <option value="">Assign to card</option>
+              <option v-for="card in cards" :key="card.id" :value="card.id">{{ card.name }}</option>
+            </select>
+          </div>
+        </task-item>
+      </template>
+    </unassigned-tasks-section>
+
+    <!-- Trash zone for deleting items - only visible if user has creation permissions -->
+    <trash-item
+      :visible="showTrashZone && canCreate"
+      :active="trashZoneActive"
+      @drag-enter="onDragEnterTrash"
+      @drag-leave="onDragLeaveTrash"
+      @drop="onDropTrash"
+    />
+
+    <!-- Confirmation Modal -->
+    <confirm-modal
+      :visible="showConfirmModal"
+      title="Confirm Deletion"
+      :message="
+        deleteType === 'task'
+          ? `Are you sure you want to delete the task '${itemToDelete?.title}'?`
+          : `Are you sure you want to delete the card '${itemToDelete?.name}'? All its tasks will also be deleted permanently.`
+      "
+      :confirmText="'Delete'"
+      :cancelText="'Cancel'"
+      :dangerMode="true"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
@@ -481,56 +699,13 @@ export default {
   text-align: center;
   margin: 1rem 0;
 }
-.add-task-form,
-.add-card-form {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  border: 1px solid #eee;
-  padding: 1rem;
-  border-radius: 8px;
-  background: #f9f9f9;
-  margin-top: 1.5rem;
-}
-.add-task-form h3,
-.add-card-form h3 {
-  width: 100%;
-  text-align: center;
-  margin-top: 0;
-  color: #185a9d;
-}
-.add-task-form input[type="text"],
-.add-card-form input[type="text"] {
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #b2f7ef;
-  font-size: 1rem;
-  background: #fff;
-}
-.add-task-form select,
+
 .card-select {
   padding: 0.5rem;
   border-radius: 6px;
   border: 1px solid #b2f7ef;
   font-size: 1rem;
   background: #fff;
-}
-.add-task-form button,
-.add-card-form button {
-  padding: 0.5rem 1.2rem;
-  border-radius: 6px;
-  background: #43cea2;
-  color: #fff;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s;
-}
-.add-task-form button:hover,
-.add-card-form button:hover {
-  background: #185a9d;
 }
 
 .cards-container {
@@ -574,28 +749,6 @@ export default {
 }
 .remove-from-card-btn:hover {
   background: #e63946;
-}
-.unassigned-tasks-section {
-  margin-top: 2rem;
-  padding: 1rem;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border: 1px solid #eee;
-}
-.unassigned-tasks-section h3 {
-  margin-top: 0;
-  color: #185a9d;
-}
-.unassigned-container {
-  min-height: 100px;
-  border-radius: 8px;
-  padding: 0.5rem;
-  transition: all 0.3s ease;
-}
-.unassigned-container.drag-over {
-  background-color: rgba(67, 206, 162, 0.2);
-  border: 2px dashed #43cea2;
-  transform: scale(1.02);
 }
 .unassigned-task {
   margin-bottom: 0.8rem;

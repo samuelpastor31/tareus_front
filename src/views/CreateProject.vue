@@ -56,10 +56,14 @@ export default {
     };
   },
   methods: {
-    ...mapActions(useDataStore, ["createNewProject"]),
+    ...mapActions(useDataStore, ["createProject"]),
     async handleSubmit(values) {
-      await this.createNewProject(values);
-      this.$router.push("/");
+      try {
+        await this.createProject(values);
+        this.$router.push("/projects");
+      } catch (error) {
+        console.error("Error creating project:", error);
+      }
     },
   },
 };

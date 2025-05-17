@@ -11,13 +11,16 @@ export default {
       default: null
     }
   },
-  emits: ['card-dragstart', 'card-drop', 'task-drop', 'drag-enter', 'drag-leave'],
+  emits: ['card-dragstart', 'card-drop', 'task-drop', 'drag-enter', 'drag-leave', 'card-dragend'],
   methods: {
     onCardDragStart(event) {
       this.$emit('card-dragstart', this.card, event);
     },
     onCardDrop(event) {
       this.$emit('card-drop', this.card, event);
+    },
+    onCardDragEnd(event) {
+      this.$emit('card-dragend', event);
     },
     onTaskDropOnCard(event) {
       this.$emit('task-drop', this.card.id, event);
@@ -41,6 +44,7 @@ export default {
     class="card-column"
     draggable="true"
     @dragstart.self="onCardDragStart"
+    @dragend.self="onCardDragEnd"
     @dragover.prevent
     @drop="onCardDrop"
   >
