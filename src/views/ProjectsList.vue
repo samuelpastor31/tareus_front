@@ -1,37 +1,36 @@
 <script>
-import { useDataStore } from '@/stores/index.js';
-import ProjectItem from './ProjectItem.vue';
-import { mapState, mapActions } from 'pinia';
+import { useDataStore } from "../stores/index.js";
+import ProjectItem from "../components/ProjectItem.vue";
+import { mapState, mapActions } from "pinia";
 
 export default {
-  name: 'ProjectsList',
+  name: "ProjectsList",
   components: {
     ProjectItem,
   },
   computed: {
-    ...mapState(useDataStore, ['projects']),
+    ...mapState(useDataStore, ["projects"]),
   },
   methods: {
-    ...mapActions(useDataStore, ['deleteProject', 'editProject']),
+    ...mapActions(useDataStore, ["deleteProject", "editProject", "fetchProjects"]),
     deleteProjects(project) {
       if (confirm(`Do you want to delete the project with id ${project.id} and name ${project.name}?`)) {
-        this.deleteProject(project.id);
+        this.deleteProject(project.id).then(() => this.fetchProjects());
       }
     },
     editProject(project) {
       this.$router.push({ path: `/edit/${project.id}` });
     },
   },
+  mounted() {
+    this.fetchProjects();
+  },
 };
 </script>
 
 <template>
   <div id="list">
-    <project-item
-      v-for="project in projects"
-      :key="project.id"
-      :project="project"
-    >
+    <project-item v-for="project in projects" :key="project.id" :project="project">
       <div id="buttons">
         <button class="editButton" :data-id="project.id" @click="editProject(project)">
           <span class="material-icons">edit</span>

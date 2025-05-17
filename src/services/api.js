@@ -22,6 +22,18 @@ export default class ApiClient {
     };
   }
 
+  cards() {
+    return {
+      getProjectCards: (projectId) => apiClient.get(`/projects/${projectId}/cards`),
+      createCard: (projectId, card) => apiClient.post(`/projects/${projectId}/cards`, card),
+      getCard: (id) => apiClient.get(`/cards/${id}`),
+      updateCard: (card) => apiClient.put(`/cards/${card.id}`, card),
+      deleteCard: (id) => apiClient.delete(`/cards/${id}`),
+      assignTask: (cardId, taskId) => apiClient.post(`/cards/${cardId}/tasks/${taskId}`),
+      removeTask: (cardId, taskId) => apiClient.delete(`/cards/${cardId}/tasks/${taskId}`),
+    };
+  }
+
   tasks() {
     return {
       getTasks: (projectId) => apiClient.get(`/projects/${projectId}/tasks`),
@@ -31,6 +43,7 @@ export default class ApiClient {
       updateTask: (task) => apiClient.put("/tasks/" + task.id, task),
       updateTaskPriority: (id, priority) => apiClient.patch(`/tasks/${id}/priority`, { priority }),
       updateTaskStatus: (id, status) => apiClient.patch(`/tasks/${id}/status`, { status }),
+      updateTaskCard: (id, cardId) => apiClient.patch(`/tasks/${id}/card`, { card_id: cardId }),
     };
   }
 

@@ -38,9 +38,6 @@ export default {
     <main class="tareus-main-content">
       <router-view />
     </main>
-    <footer>
-      Tareus - Your Task Manager
-    </footer>
   </div>
 </template>
 
