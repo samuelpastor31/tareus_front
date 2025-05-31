@@ -317,8 +317,8 @@ export const useDataStore = defineStore("data", {
         return null;
       }
     },
-    
-    async updateTaskCard(taskId, cardId) {
+
+      async updateTaskCard(taskId, cardId) {
       try {
         const response = await apiClient.tasks().updateTaskCard(taskId, cardId);
         const taskIndex = this.tasks.findIndex(task => task.id === taskId);
@@ -329,6 +329,46 @@ export const useDataStore = defineStore("data", {
       } catch (error) {
         console.error("Error updating task's card:", error);
         return null;
+      }
+    },
+    
+    async fetchTaskComments(taskId) {
+      try {
+        const response = await apiClient.comments().getTaskComments(taskId);
+        return response.data || [];
+      } catch (error) {
+        console.error("Error fetching task comments:", error);
+        return [];
+      }
+    },
+
+    async addComment(taskId, content) {
+      try {
+        const response = await apiClient.comments().addComment(taskId, content);
+        return response.data;
+      } catch (error) {
+        console.error("Error adding comment:", error);
+        throw error;
+      }
+    },
+
+    async updateComment(commentId, content) {
+      try {
+        const response = await apiClient.comments().updateComment(commentId, content);
+        return response.data;
+      } catch (error) {
+        console.error("Error updating comment:", error);
+        throw error;
+      }
+    },
+
+    async deleteComment(commentId) {
+      try {
+        await apiClient.comments().deleteComment(commentId);
+        return true;
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+        throw error;
       }
     },
   },

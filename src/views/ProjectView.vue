@@ -72,6 +72,7 @@ export default {
     ...mapActions(useDataStore, [
       "fetchTasks",
       "createTask",
+      "updateTask",
       "fetchCards",
       "createCard",
       "updateCard",
@@ -507,6 +508,22 @@ export default {
         });
     },
 
+    async handleTaskUpdate(updatedTask) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to edit tasks";
+        return;
+      }
+
+      try {
+        await this.updateTask(updatedTask);
+        await this.loadTasks();
+        await this.loadCards();
+      } catch (error) {
+        console.error('Error updating task:', error);
+        this.error = "Error updating task";
+      }
+    },
+
     resetDragState() {
       this.draggingTask = null;
       this.draggingCard = null;
@@ -574,6 +591,7 @@ export default {
             draggable="true"
             @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)"
             @dragend="onDragEnd"
+            @task-updated="handleTaskUpdate"
           >
             <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)" class="remove-from-card-btn">
               Remove from card
@@ -613,7 +631,7 @@ export default {
       @drag-end="onDragEnd"
       @assign-to-card="assignTaskToCardHandler"
     >
-      <template #default="{ task, idx, cards }">
+      <template #default="{ task, idx, cards }">        
         <task-item
           :key="task.id"
           :task="task"
@@ -621,6 +639,7 @@ export default {
           draggable="true"
           @dragstart="(e) => onDragStart(task, idx, null, e)"
           @dragend="onDragEnd"
+          @task-updated="handleTaskUpdate"
         >
           <div class="assign-to-card">
             <select @change="(e) => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
