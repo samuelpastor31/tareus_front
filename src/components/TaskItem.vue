@@ -11,7 +11,8 @@ export default {
       type: Object,
       required: true,
     },
-  }, data() {
+  },
+  data() {
     return {
       showComments: false,
       isEditing: false,
@@ -62,9 +63,9 @@ export default {
         this.isEditing = false;
       } catch (error) {
         console.error('Error updating task:', error);
-        alert('Error updating task');
       }
     },
+
     cancelEdit() {
       this.isEditing = false;
       this.editedTask = {
@@ -73,7 +74,7 @@ export default {
         priority: '',
         status: ''
       };
-    },
+    }
   }
 };
 </script>

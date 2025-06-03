@@ -30,7 +30,7 @@ export const useDataStore = defineStore("data", {
 
     async fetchProjectUsers(projectId) {
       try {
-        const response = await apiClient.getProjectUsers(projectId);
+        const response = await apiClient.projects().getProjectUsers(projectId);
         this.users = response.data;
         return this.users;
       } catch (error) {
@@ -401,6 +401,37 @@ export const useDataStore = defineStore("data", {
         return true;
       } catch (error) {
         console.error("Error deleting comment:", error);
+        throw error;
+      }
+    },
+
+    // User-Project management methods
+    async assignUserToProject(projectId, userId, permissions) {
+      try {
+        const response = await apiClient.projects().assignUserToProject(projectId, userId, permissions);
+        return response.data;
+      } catch (error) {
+        console.error("Error assigning user to project:", error);
+        throw error;
+      }
+    },
+
+    async updateUserPermissions(projectId, userId, permissions) {
+      try {
+        const response = await apiClient.projects().updateUserPermissions(projectId, userId, permissions);
+        return response.data;
+      } catch (error) {
+        console.error("Error updating user permissions:", error);
+        throw error;
+      }
+    },
+
+    async removeUserFromProject(projectId, userId) {
+      try {
+        const response = await apiClient.projects().removeUserFromProject(projectId, userId);
+        return response.data;
+      } catch (error) {
+        console.error("Error removing user from project:", error);
         throw error;
       }
     },

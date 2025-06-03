@@ -2,45 +2,74 @@
 import { useDataStore } from "../stores/index.js";
 import ProjectItem from "../components/ProjectItem.vue";
 import CreateProjectModal from "../components/CreateProjectModal.vue";
+import EditProjectModal from "../components/EditProjectModal.vue";
+import ConfirmModal from "../components/ConfirmModal.vue";
 import { mapState, mapActions } from "pinia";
 
 export default {
-  name: "ProjectsList",
-  components: {
+  name: "ProjectsList", components: {
     ProjectItem,
     CreateProjectModal,
+    EditProjectModal,
+    ConfirmModal,
   },
   data() {
     return {
       showCreateModal: false,
+      showEditModal: false,
+      selectedProject: null,
+      // Confirm Modal
+      showConfirmModal: false,
+      confirmModal: {
+        title: '',
+        message: '',
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        dangerMode: true
+      },
+      confirmCallback: null,
+      // Alert Modal
+      showAlertModal: false,
+      alertModal: {
+        title: 'Error',
+        message: '',
+        dangerMode: true
+      }
     };
   },
   computed: {
     ...mapState(useDataStore, ["projects"]),
   },
   methods: {
-    ...mapActions(useDataStore, ["deleteProject", "editProject", "fetchProjects", "createProject"]),
-    async deleteProjects(project) {
-      if (confirm(`Do you want to delete the project "${project.name}"?`)) {
-        try {
-          const success = await this.deleteProject(project.id);
-          if (success) {
-            // Project deletion was successful, the store has already updated the projects array
-          } else {
-            alert('Failed to delete project. Please try again.');
-            // Refresh from server in case of failure
+    ...mapActions(useDataStore, ["deleteProject", "editProject", "fetchProjects", "createProject"]), async deleteProjects(project) {
+      this.showConfirm(
+        'Delete Project',
+        `Do you want to delete the project "${project.name}"?`,
+        async () => {
+          try {
+            const success = await this.deleteProject(project.id);
+            if (success) {
+              // Project deletion was successful, the store has already updated the projects array
+            } else {
+              this.showAlert('Error', 'Failed to delete project. Please try again.');
+              // Refresh from server in case of failure
+              await this.fetchProjects();
+            }
+          } catch (error) {
+            console.error('Error deleting project:', error);
+            this.showAlert('Error', 'An error occurred while deleting the project.');
+            // Refresh from server in case of error
             await this.fetchProjects();
           }
-        } catch (error) {
-          console.error('Error deleting project:', error);
-          alert('An error occurred while deleting the project.');
-          // Refresh from server in case of error
-          await this.fetchProjects();
-        }
-      }
+        },
+        'Delete',
+        'Cancel',
+        true
+      );
     },
     editProject(project) {
-      this.$router.push({ path: `/edit/${project.id}` });
+      this.selectedProject = project;
+      this.showEditModal = true;
     },
     openCreateModal() {
       this.showCreateModal = true;
@@ -48,15 +77,57 @@ export default {
     closeCreateModal() {
       this.showCreateModal = false;
     },
-    async handleCreateProject(values) {
+    closeEditModal() {
+      this.showEditModal = false;
+      this.selectedProject = null;
+    }, async handleCreateProject(values) {
       try {
         await this.createProject(values);
         await this.fetchProjects();
         this.closeCreateModal();
       } catch (error) {
         console.error("Error creating project:", error);
-        alert('An error occurred while creating the project.');
+        this.showAlert('Error', 'An error occurred while creating the project.');
       }
+    },
+
+    async handleUpdateProject(values) {
+      try {
+        await this.fetchProjects(); // Refresh the projects list
+        this.closeEditModal();
+      } catch (error) {
+        console.error("Error updating project:", error);
+        this.showAlert('Error', 'An error occurred while updating the project.');
+      }
+    },
+
+    // Helper methods for modals
+    showAlert(title, message, dangerMode = true) {
+      this.alertModal = { title, message, dangerMode };
+      this.showAlertModal = true;
+    },
+
+    showConfirm(title, message, callback, confirmText = 'Confirm', cancelText = 'Cancel', dangerMode = true) {
+      this.confirmModal = { title, message, confirmText, cancelText, dangerMode };
+      this.confirmCallback = callback;
+      this.showConfirmModal = true;
+    },
+
+    handleConfirm() {
+      this.showConfirmModal = false;
+      if (this.confirmCallback) {
+        this.confirmCallback();
+        this.confirmCallback = null;
+      }
+    },
+
+    handleCancel() {
+      this.showConfirmModal = false;
+      this.confirmCallback = null;
+    },
+
+    handleAlertClose() {
+      this.showAlertModal = false;
     },
   },
   mounted() {
@@ -87,8 +158,20 @@ export default {
         </div>
       </project-item>
     </div>
-    <!--Project Modal -->
     <CreateProjectModal :show="showCreateModal" @close="closeCreateModal" @create="handleCreateProject" />
+
+    <!--Edit Project Modal -->
+    <EditProjectModal :show="showEditModal" :project="selectedProject" @close="closeEditModal"
+      @updated="handleUpdateProject" />
+
+    <!-- Confirmation Modal -->
+    <ConfirmModal :visible="showConfirmModal" :title="confirmModal.title" :message="confirmModal.message"
+      :confirmText="confirmModal.confirmText" :cancelText="confirmModal.cancelText"
+      :dangerMode="confirmModal.dangerMode" @confirm="handleConfirm" @cancel="handleCancel" />
+
+    <!-- Alert Modal -->
+    <ConfirmModal :visible="showAlertModal" :title="alertModal.title" :message="alertModal.message" :confirmText="'OK'"
+      :cancelText="''" :dangerMode="alertModal.dangerMode" @confirm="handleAlertClose" @cancel="handleAlertClose" />
   </div>
 </template>
 
