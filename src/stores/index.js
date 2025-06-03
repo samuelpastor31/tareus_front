@@ -110,12 +110,35 @@ export const useDataStore = defineStore("data", {
 
     async createProject(projectData) {
       try {
-        const response = await apiClient.projects().addProject(projectData);
-        this.projects.push(response.data);
-        return response.data;
+        // First create the project
+        const response = await apiClient.projects().addProject({
+          name: projectData.name,
+          description: projectData.description
+        });
+        
+        const newProject = response.data;
+
+        // If users are provided, assign them to the project
+        if (projectData.users && projectData.users.length > 0) {
+          for (const userAssignment of projectData.users) {
+            try {
+              await apiClient.projects().assignUserToProject(
+                newProject.id,
+                userAssignment.userId,
+                userAssignment.permissions
+              );
+            } catch (userError) {
+              console.error(`Error assigning user ${userAssignment.userId}:`, userError);
+              // Continue with other users even if one fails
+            }
+          }
+        }
+
+        this.projects.push(newProject);
+        return newProject;
       } catch (error) {
         console.error("Error creating project:", error);
-        return null;
+        throw error;
       }
     },
 

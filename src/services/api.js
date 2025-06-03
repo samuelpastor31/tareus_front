@@ -33,6 +33,13 @@ export default class ApiClient {
       removeProject: (id) => apiClient.delete("/projects/" + id),
       updateProject: (project) =>
         apiClient.put("/projects/" + project.id, project),
+      getProjectUsers: (projectId) => apiClient.get(`/projects/${projectId}/users`),
+      assignUserToProject: (projectId, userId, permissions) => 
+        apiClient.post(`/projects/${projectId}/users/${userId}`, permissions),
+      updateUserPermissions: (projectId, userId, permissions) =>
+        apiClient.put(`/projects/${projectId}/users/${userId}`, permissions),
+      removeUserFromProject: (projectId, userId) =>
+        apiClient.delete(`/projects/${projectId}/users/${userId}`),
     };
   }
 
