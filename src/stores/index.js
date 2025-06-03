@@ -25,18 +25,7 @@ export const useDataStore = defineStore("data", {
       } catch (error) {
         console.error("Error fetching projects:", error);
         return [];
-      }
-    },
-
-    async fetchProject(projectId) {
-      try {
-        const response = await apiClient.projects().getProject(projectId);
-        this.currentProject = response.data;
-        return this.currentProject;
-      } catch (error) {
-        console.error("Error fetching project:", error);
-        return null;
-      }
+      }    
     },
 
     async fetchProjectUsers(projectId) {
@@ -108,7 +97,9 @@ export const useDataStore = defineStore("data", {
 
     async createCard(projectId, cardData) {
       try {
-        const response = await apiClient.cards().createCard(projectId, cardData);
+        const response = await apiClient
+          .cards()
+          .createCard(projectId, cardData);
         this.cards.push(response.data);
         return response.data;
       } catch (error) {
@@ -131,19 +122,24 @@ export const useDataStore = defineStore("data", {
     async updateProject(projectData) {
       try {
         const response = await apiClient.projects().updateProject(projectData);
-        const index = this.projects.findIndex((project) => project.id === projectData.id);
+        const index = this.projects.findIndex(
+          (project) => project.id === projectData.id
+        );
         if (index !== -1) this.projects[index] = response.data;
         return response.data;
       } catch (error) {
         console.error("Error updating project:", error);
         return null;
       }
-    },
-
-    async deleteProject(projectId) {
+    },    async deleteProject(projectId) {
       try {
         await apiClient.projects().removeProject(projectId);
-        this.projects = this.projects.filter((project) => project.id !== projectId);
+        
+        // Filter out the deleted project using strict comparison
+        this.projects = this.projects.filter((project) => {
+          return String(project.id) !== String(projectId);
+        });
+        
         return true;
       } catch (error) {
         console.error("Error deleting project:", error);
@@ -187,7 +183,9 @@ export const useDataStore = defineStore("data", {
 
     async updateTaskPriority(taskId, priority) {
       try {
-        const response = await apiClient.tasks().updateTaskPriority(taskId, priority);
+        const response = await apiClient
+          .tasks()
+          .updateTaskPriority(taskId, priority);
         const index = this.tasks.findIndex((task) => task.id === taskId);
         if (index !== -1) this.tasks[index] = response.data;
         return response.data;
@@ -199,7 +197,9 @@ export const useDataStore = defineStore("data", {
 
     async updateTaskStatus(taskId, status) {
       try {
-        const response = await apiClient.tasks().updateTaskStatus(taskId, status);
+        const response = await apiClient
+          .tasks()
+          .updateTaskStatus(taskId, status);
         const index = this.tasks.findIndex((task) => task.id === taskId);
         if (index !== -1) this.tasks[index] = response.data;
         return response.data;
@@ -246,6 +246,14 @@ export const useDataStore = defineStore("data", {
       localStorage.setItem("loggedIn", "false");
       clearAuthToken();
       this.loggedIn = false;
+      // Clear any cached data
+      this.projects = [];
+      this.tasks = [];
+      this.cards = [];
+      this.currentProject = null;
+      this.users = [];
+      this.userReport = null;
+      this.projectReport = null;
     },
 
     async fetchUsers() {
@@ -282,7 +290,7 @@ export const useDataStore = defineStore("data", {
     async deleteCard(cardId) {
       try {
         await apiClient.cards().deleteCard(cardId);
-        this.cards = this.cards.filter(card => card.id !== cardId);
+        this.cards = this.cards.filter((card) => card.id !== cardId);
         return true;
       } catch (error) {
         console.error("Error deleting card:", error);
@@ -293,7 +301,7 @@ export const useDataStore = defineStore("data", {
     async assignTaskToCard(cardId, taskId) {
       try {
         const response = await apiClient.cards().assignTask(cardId, taskId);
-        const taskIndex = this.tasks.findIndex(task => task.id === taskId);
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
           this.tasks[taskIndex] = response.data.task;
         }
@@ -307,7 +315,7 @@ export const useDataStore = defineStore("data", {
     async removeTaskFromCard(cardId, taskId) {
       try {
         const response = await apiClient.cards().removeTask(cardId, taskId);
-        const taskIndex = this.tasks.findIndex(task => task.id === taskId);
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
           this.tasks[taskIndex] = response.data.task;
         }
@@ -318,10 +326,10 @@ export const useDataStore = defineStore("data", {
       }
     },
 
-      async updateTaskCard(taskId, cardId) {
+    async updateTaskCard(taskId, cardId) {
       try {
         const response = await apiClient.tasks().updateTaskCard(taskId, cardId);
-        const taskIndex = this.tasks.findIndex(task => task.id === taskId);
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
           this.tasks[taskIndex] = response.data;
         }
@@ -331,7 +339,7 @@ export const useDataStore = defineStore("data", {
         return null;
       }
     },
-    
+
     async fetchTaskComments(taskId) {
       try {
         const response = await apiClient.comments().getTaskComments(taskId);
@@ -354,7 +362,9 @@ export const useDataStore = defineStore("data", {
 
     async updateComment(commentId, content) {
       try {
-        const response = await apiClient.comments().updateComment(commentId, content);
+        const response = await apiClient
+          .comments()
+          .updateComment(commentId, content);
         return response.data;
       } catch (error) {
         console.error("Error updating comment:", error);

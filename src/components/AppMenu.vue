@@ -16,10 +16,7 @@ const closeSidebar = () => {
 
 <template>
   <template v-if="auth.loggedIn">
-    <aside
-      class="sidebar-mobile d-md-none"
-      :class="{ expanded: isSidebarOpen }"
-    >
+    <aside class="sidebar-mobile d-md-none" :class="{ expanded: isSidebarOpen }">
       <button class="sidebar-toggle" @click="toggleSidebar" :aria-label="isSidebarOpen ? 'Close menu' : 'Open menu'">
         <i :class="isSidebarOpen ? 'bi bi-chevron-left' : 'bi bi-chevron-right'"></i>
       </button>
@@ -27,10 +24,6 @@ const closeSidebar = () => {
         <RouterLink to="/projects" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-kanban"></i>
           <span v-if="isSidebarOpen">View Projects</span>
-        </RouterLink>
-        <RouterLink to="/create-project" class="sidebar-icon" @click="closeSidebar">
-          <i class="bi bi-plus-square"></i>
-          <span v-if="isSidebarOpen">Create Project</span>
         </RouterLink>
         <RouterLink to="/settings" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-gear"></i>
@@ -47,9 +40,6 @@ const closeSidebar = () => {
       <nav class="nav-bar">
         <RouterLink to="/projects" class="nav-btn">
           <i class="bi bi-kanban"></i> View Projects
-        </RouterLink>
-        <RouterLink to="/create-project" class="nav-btn">
-          <i class="bi bi-plus-square"></i> Create Project
         </RouterLink>
         <RouterLink to="/settings" class="nav-btn">
           <i class="bi bi-gear"></i> Settings
@@ -78,16 +68,18 @@ const closeSidebar = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: width 0.2s cubic-bezier(.55,0,.1,1);
+  transition: width 0.2s cubic-bezier(.55, 0, .1, 1);
   gap: 1rem;
   overflow: hidden;
 }
+
 .sidebar-mobile.expanded {
   width: 180px;
   align-items: flex-start;
   padding-left: 0.5rem;
   overflow: hidden;
 }
+
 .sidebar-toggle {
   background: #fff;
   border: none;
@@ -107,10 +99,12 @@ const closeSidebar = () => {
   overflow: hidden;
   align-self: flex-start;
 }
+
 .sidebar-toggle:hover {
   background: #43cea2;
   color: #fff;
 }
+
 .sidebar-mobile nav {
   width: 100%;
   display: flex;
@@ -118,6 +112,7 @@ const closeSidebar = () => {
   gap: 0.7rem;
   align-items: flex-start;
 }
+
 .sidebar-icon {
   display: flex;
   align-items: center;
@@ -135,6 +130,7 @@ const closeSidebar = () => {
   border: 2px solid transparent;
   justify-content: flex-start;
 }
+
 .sidebar-icon span {
   font-size: 1.08rem;
   color: #fff;
@@ -142,18 +138,22 @@ const closeSidebar = () => {
   transition: opacity 0.18s, color 0.18s;
   opacity: 1;
 }
+
 .sidebar-icon:hover,
 .sidebar-icon.router-link-exact-active {
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
+
 .sidebar-icon.router-link-exact-active {
   border: 2px solid #fff;
 }
+
 .sidebar-icon.router-link-exact-active i,
 .sidebar-icon.router-link-exact-active span {
   color: #fff !important;
 }
+
 .sidebar-icon:hover i,
 .sidebar-icon:hover span {
   color: #fff !important;
@@ -179,6 +179,7 @@ const closeSidebar = () => {
   .topbar {
     display: none !important;
   }
+
   .nav-bar {
     display: none !important;
   }
@@ -194,6 +195,7 @@ const closeSidebar = () => {
   margin-bottom: 0.5rem;
   transition: color 0.18s;
 }
+
 .logo:hover {
   color: #fff;
 }
@@ -230,8 +232,7 @@ const closeSidebar = () => {
 
 .nav-btn:hover,
 .nav-btn.router-link-exact-active {
-  background: linear-gradient(90deg, #b2f7ef 0%, #a6c1ee 100%);
-  color: #185a9d;
+  background: linear-gradient(90deg, #b2f7ef 0%, #a6c1ee 100%); color: #185a9d;
   box-shadow: 0 4px 16px rgba(24, 90, 157, 0.10);
 }
 
@@ -245,6 +246,7 @@ const closeSidebar = () => {
   .sidebar-mobile {
     display: none !important;
   }
+
   .nav-bar {
     display: flex !important;
   }

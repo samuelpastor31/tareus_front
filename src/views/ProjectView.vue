@@ -78,7 +78,6 @@ export default {
       "updateCard",
       "updateTaskCard",
       "fetchProjects",
-      "fetchProject",
       "deleteTask",
       "deleteCard",
     ]),
@@ -86,16 +85,27 @@ export default {
     async loadProject() {
       this.loadingProject = true;
       try {
-        await this.fetchProject(this.projectId);
-
+        // Get project from cached data (router guard should have ensured it exists)
         if (!this.project) {
+          // If project is not in cache, try to refresh projects list
           await this.fetchProjects();
+
+          if (!this.project) {
+            console.warn(`Project with ID ${this.projectId} not found, redirecting to projects list`);
+            this.$router.replace('/projects');
+            return false;
+          }
         }
+
+        // Project exists in cache, no need to set currentProject as we use the computed property
+        return true;
       } catch (e) {
-        this.error = "Error loading project details";
         console.error("Error loading project:", e);
+        this.error = "Error loading project details";
+        return false;
+      } finally {
+        this.loadingProject = false;
       }
-      this.loadingProject = false;
     },
 
     async loadTasks() {
@@ -107,6 +117,12 @@ export default {
         this.tasksList = Array.isArray(this.tasks) ? [...this.tasks] : [];
         this.noTasks = this.tasksList.length === 0;
       } catch (e) {
+        console.error("Error loading tasks:", e);
+        if (e.response && e.response.status === 404) {
+          console.warn(`Tasks for project ${this.projectId} not found, project may have been deleted`);
+          this.$router.replace('/projects');
+          return;
+        }
         this.error = "Error loading tasks";
       }
       this.loading = false;
@@ -119,6 +135,12 @@ export default {
         this.cardsList = Array.isArray(this.cards) ? [...this.cards] : [];
         this.noCards = this.cardsList.length === 0;
       } catch (e) {
+        console.error("Error loading cards:", e);
+        if (e.response && e.response.status === 404) {
+          console.warn(`Cards for project ${this.projectId} not found, project may have been deleted`);
+          this.$router.replace('/projects');
+          return;
+        }
         this.error = "Error loading cards";
       }
       this.loadingCards = false;
@@ -537,9 +559,15 @@ export default {
 
   async mounted() {
     this.projectId = this.$route.params.id;
-    await this.loadProject();
-    await this.loadTasks();
-    await this.loadCards();
+
+    // Load project first and only continue if it exists
+    const projectLoaded = await this.loadProject();
+
+    // Only load tasks and cards if project was successfully loaded
+    if (projectLoaded) {
+      await this.loadTasks();
+      await this.loadCards();
+    }
   },
 };
 </script>
@@ -551,18 +579,15 @@ export default {
     <h2 v-else class="error-msg">Project not found</h2>
 
     <!-- Form to add tasks -->
-    <add-task-form
-      v-if="canCreate"
-      @add-task="
-        (taskData) => {
-          newTaskTitle = taskData.title;
-          newTaskDesc = taskData.description;
-          newTaskPriority = taskData.priority;
-          newTaskStatus = taskData.status;
-          addTask();
-        }
-      "
-    />
+    <add-task-form v-if="canCreate" @add-task="
+      (taskData) => {
+        newTaskTitle = taskData.title;
+        newTaskDesc = taskData.description;
+        newTaskPriority = taskData.priority;
+        newTaskStatus = taskData.status;
+        addTask();
+      }
+    " />
 
     <div v-if="loading || loadingCards" class="loading-msg">Loading...</div>
     <div v-if="error" class="error-msg">{{ error }}</div>
@@ -571,76 +596,41 @@ export default {
     <div v-if="!loadingCards" class="cards-container">
       <div class="cards-row">
         <!-- Cards list -->
-        <card-item
-          v-for="(card, idx) in cardsList"
-          :key="card.id"
-          :card="card"
-          :dragOverCardId="dragOverCardId"
+        <card-item v-for="(card, idx) in cardsList" :key="card.id" :card="card" :dragOverCardId="dragOverCardId"
           @card-dragstart="(card, event) => onCardDragStart(card, idx, event)"
-          @card-drop="(card, event) => onCardDrop(idx, event)"
-          @card-dragend="onDragEnd"
-          @task-drop="onTaskDropOnCard"
-          @drag-enter="onDragEnter"
-          @drag-leave="onDragLeave"
-        >
-          <task-item
-            v-for="(task, taskIdx) in card.Tasks"
-            :key="task.id"
-            :task="task"
-            class="task-in-card"
-            draggable="true"
-            @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)"
-            @dragend="onDragEnd"
-            @task-updated="handleTaskUpdate"
-          >
-            <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)" class="remove-from-card-btn">
+          @card-drop="(card, event) => onCardDrop(idx, event)" @card-dragend="onDragEnd" @task-drop="onTaskDropOnCard"
+          @drag-enter="onDragEnter" @drag-leave="onDragLeave">
+          <task-item v-for="(task, taskIdx) in card.Tasks" :key="task.id" :task="task" class="task-in-card"
+            draggable="true" @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)" @dragend="onDragEnd"
+            @task-updated="handleTaskUpdate">
+            <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)"
+              class="remove-from-card-btn">
               Remove from card
             </button>
           </task-item>
         </card-item>
 
         <!-- Add Card Form Component -->
-        <add-card-form
-          v-if="canCreate"
-          :is-adding="isAddingCard"
-          @show-form="showAddCardForm"
-          @cancel="cancelAddCard"
+        <add-card-form v-if="canCreate" :is-adding="isAddingCard" @show-form="showAddCardForm" @cancel="cancelAddCard"
           @add-card="
             (cardData) => {
               newCardName = cardData.name;
               newCardDescription = cardData.description;
               addCard();
             }
-          "
-        />
+          " />
       </div>
     </div>
 
     <!-- Unassigned tasks section - only show if there are unassigned tasks -->
-    <unassigned-tasks-section
-      v-if="hasUnassignedTasks || loading"
-      :tasks="tasksList"
-      :cards="cardsList"
-      :loading="loading"
-      :noTasks="noTasks"
-      :dragOverUnassigned="dragOverUnassigned"
-      @drag-enter-unassigned="onDragEnterUnassigned"
-      @drag-leave-unassigned="onDragLeaveUnassigned"
-      @drop-on-unassigned="onTaskDropOnUnassigned"
-      @drag-start="onDragStart"
-      @drag-end="onDragEnd"
-      @assign-to-card="assignTaskToCardHandler"
-    >
-      <template #default="{ task, idx, cards }">        
-        <task-item
-          :key="task.id"
-          :task="task"
-          class="unassigned-task"
-          draggable="true"
-          @dragstart="(e) => onDragStart(task, idx, null, e)"
-          @dragend="onDragEnd"
-          @task-updated="handleTaskUpdate"
-        >
+    <unassigned-tasks-section v-if="hasUnassignedTasks || loading" :tasks="tasksList" :cards="cardsList"
+      :loading="loading" :noTasks="noTasks" :dragOverUnassigned="dragOverUnassigned"
+      @drag-enter-unassigned="onDragEnterUnassigned" @drag-leave-unassigned="onDragLeaveUnassigned"
+      @drop-on-unassigned="onTaskDropOnUnassigned" @drag-start="onDragStart" @drag-end="onDragEnd"
+      @assign-to-card="assignTaskToCardHandler">
+      <template #default="{ task, idx, cards }">
+        <task-item :key="task.id" :task="task" class="unassigned-task" draggable="true"
+          @dragstart="(e) => onDragStart(task, idx, null, e)" @dragend="onDragEnd" @task-updated="handleTaskUpdate">
           <div class="assign-to-card">
             <select @change="(e) => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
               <option value="">Assign to card</option>
@@ -652,29 +642,15 @@ export default {
     </unassigned-tasks-section>
 
     <!-- Trash zone for deleting items - only visible if user has creation permissions -->
-    <trash-item
-      :visible="showTrashZone && canCreate"
-      :active="trashZoneActive"
-      @drag-enter="onDragEnterTrash"
-      @drag-leave="onDragLeaveTrash"
-      @drop="onDropTrash"
-    />
+    <trash-item :visible="showTrashZone && canCreate" :active="trashZoneActive" @drag-enter="onDragEnterTrash"
+      @drag-leave="onDragLeaveTrash" @drop="onDropTrash" />
 
     <!-- Confirmation Modal -->
-    <confirm-modal
-      :visible="showConfirmModal"
-      title="Confirm Deletion"
-      :message="
-        deleteType === 'task'
-          ? `Are you sure you want to delete the task '${itemToDelete?.title}'?`
-          : `Are you sure you want to delete the card '${itemToDelete?.name}'? All its tasks will also be deleted permanently.`
-      "
-      :confirmText="'Delete'"
-      :cancelText="'Cancel'"
-      :dangerMode="true"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-    />
+    <confirm-modal :visible="showConfirmModal" title="Confirm Deletion" :message="deleteType === 'task'
+      ? `Are you sure you want to delete the task '${itemToDelete?.title}'?`
+      : `Are you sure you want to delete the card '${itemToDelete?.name}'? All its tasks will also be deleted permanently.`
+      " :confirmText="'Delete'" :cancelText="'Cancel'" :dangerMode="true" @confirm="confirmDelete"
+      @cancel="cancelDelete" />
   </div>
 </template>
 
@@ -684,6 +660,7 @@ export default {
   min-height: 100vh;
   box-sizing: border-box;
 }
+
 .tasks-row {
   display: flex;
   flex-direction: row;
@@ -693,26 +670,31 @@ export default {
   overflow-x: auto;
   padding-bottom: 1rem;
 }
+
 .loading-msg {
   color: #185a9d;
   text-align: center;
   margin: 1rem 0;
 }
+
 .tasks-loading {
   color: #185a9d;
   margin: 1rem 0;
 }
+
 .no-tasks-msg {
   color: #888;
   font-size: 1.1rem;
   margin: 1rem 0;
 }
+
 .no-cards-msg {
   text-align: center;
   color: #888;
   font-size: 1.1rem;
   margin: 2rem 0;
 }
+
 .error-msg {
   color: #d32f2f;
   text-align: center;
@@ -730,6 +712,7 @@ export default {
 .cards-container {
   margin-top: 2rem;
 }
+
 .cards-row {
   display: flex;
   flex-direction: row;
@@ -738,6 +721,7 @@ export default {
   padding: 1rem 0.5rem;
   min-height: 300px;
 }
+
 .task-in-card {
   margin-bottom: 0.8rem;
   position: relative;
@@ -746,16 +730,20 @@ export default {
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
+
 .task-in-card:last-child {
   margin-bottom: 0;
 }
+
 .task-in-card:active {
   cursor: grabbing;
 }
+
 .task-in-card[dragging="true"] {
   opacity: 0.6;
   border: 2px dashed #43cea2;
 }
+
 .remove-from-card-btn {
   padding: 0.3rem 0.5rem;
   font-size: 0.8rem;
@@ -766,16 +754,20 @@ export default {
   cursor: pointer;
   margin-top: 0.5rem;
 }
+
 .remove-from-card-btn:hover {
   background: #e63946;
 }
+
 .unassigned-task {
   margin-bottom: 0.8rem;
   cursor: grab;
 }
+
 .unassigned-task:active {
   cursor: grabbing;
 }
+
 .assign-to-card {
   margin-top: 0.5rem;
 }

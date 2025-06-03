@@ -50,7 +50,8 @@ export default {
       <ul>
         <li v-if="project.ProjectUser">View: <strong>{{ project.ProjectUser?.can_view ? 'Yes' : 'No' }}</strong></li>
         <li v-if="project.ProjectUser">Edit: <strong>{{ project.ProjectUser?.can_edit ? 'Yes' : 'No' }}</strong></li>
-        <li v-if="project.ProjectUser">Create: <strong>{{ project.ProjectUser?.can_create ? 'Yes' : 'No' }}</strong></li>
+        <li v-if="project.ProjectUser">Create: <strong>{{ project.ProjectUser?.can_create ? 'Yes' : 'No' }}</strong>
+        </li>
       </ul>
     </div>
     <slot></slot>
@@ -59,63 +60,141 @@ export default {
 
 <style scoped>
 .card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(24, 90, 157, 0.08);
   cursor: pointer;
-  transition: box-shadow 0.18s, background 0.18s;
-  width: 280px;
-  max-width: 280px;
+  transition: all 0.3s ease;
+  width: 320px;
+  max-width: 320px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+}
+
 .card:hover {
-  background: #e0f7fa;
-  box-shadow: 0 4px 16px rgba(24,90,157,0.12);
+  background: #f8fffe;
+  box-shadow: 0 8px 32px rgba(24, 90, 157, 0.15);
+  transform: translateY(-2px);
+  border-color: rgba(67, 206, 162, 0.3);
 }
+
 .title {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: #185a9d;
+  letter-spacing: 0.5px;
 }
+
 .name {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #2c3e50;
 }
+
 .description {
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-.owner {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
   color: #555;
+  line-height: 1.5;
+  flex-grow: 1;
 }
-.permissions {
+
+.owner {
   font-size: 0.9rem;
-  margin-top: 0.5rem;
+  color: #666;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.permissions ul {
-  margin: 0.2rem 0 0 1rem;
-  padding: 0;
-  list-style: disc;
-}
+
 .owner-yes {
   color: #43cea2;
   font-weight: bold;
-  margin-left: 0.3rem;
-  font-size: 1.2em;
+  font-size: 1.3em;
+  text-shadow: 0 1px 2px rgba(67, 206, 162, 0.3);
 }
+
 .owner-no {
-  color: #d32f2f;
+  color: #e74c3c;
   font-weight: bold;
-  margin-left: 0.3rem;
-  font-size: 1.2em;
+  font-size: 1.3em;
+  text-shadow: 0 1px 2px rgba(231, 76, 60, 0.3);
+}
+
+.permissions {
+  background: linear-gradient(120deg, #f0faf9 0%, #f0f4f8 100%);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: auto;
+  border: 1px solid rgba(67, 206, 162, 0.1);
+}
+
+.permissions>span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #185a9d;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.permissions ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.permissions li {
+  font-size: 0.85rem;
+  color: #555;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.permissions strong {
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.permissions li:has(strong:contains("Yes")) strong {
+  background: rgba(67, 206, 162, 0.1);
+  color: #43cea2;
+}
+
+.permissions li:has(strong:contains("No")) strong {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
 }
 
 @media (max-width: 768px) {
   .card {
-    width: 260px;
-    max-width: 260px;
+    width: 300px;
+    max-width: 300px;
+    min-height: 260px;
   }
 }
 
@@ -123,6 +202,8 @@ export default {
   .card {
     width: 100%;
     max-width: 100%;
+    min-height: 240px;
+    margin: 0 0.5rem;
   }
 }
 </style>

@@ -152,8 +152,7 @@ export default {
         </button>
       </div>
     </div>
-    <TaskComments :task-id="task.id" :is-visible="showComments" @close="closeComments"
-      @comment-added="onCommentAdded" />
+    <TaskComments :task-id="task.id" :is-visible="showComments" @close="closeComments" />
   </div>
 </template>
 
