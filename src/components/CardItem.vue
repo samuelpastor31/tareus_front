@@ -11,7 +11,7 @@ export default {
       default: null
     }
   },
-  emits: ['card-dragstart', 'card-drop', 'task-drop', 'drag-enter', 'drag-leave', 'card-dragend'],
+  emits: ['card-dragstart', 'card-drop', 'task-drop', 'drag-enter', 'drag-leave', 'card-dragend', 'add-task'],
   methods: {
     onCardDragStart(event) {
       this.$emit('card-dragstart', this.card, event);
@@ -34,6 +34,9 @@ export default {
     allowDrop(event) {
       event.preventDefault();
       event.stopPropagation();
+    },
+    openAddTaskModal() {
+      this.$emit('add-task', this.card.id);
     }
   }
 };
@@ -52,8 +55,7 @@ export default {
       <h3>{{ card.name }}</h3>
       <p v-if="card.description">{{ card.description }}</p>
     </div>
-    
-    <div 
+  <div 
       class="card-tasks"
       :class="{ 'drag-over': dragOverCardId === card.id }"
       @dragover.prevent="allowDrop"
@@ -62,10 +64,18 @@ export default {
       @drop.stop="onTaskDropOnCard"
       :data-card-id="card.id"
     >
-      <div v-if="!card.Tasks || card.Tasks.length === 0" class="no-tasks-in-card">
-        No tasks in this card
+      <div v-if="!card.Tasks || card.Tasks.length === 0" class="no-tasks-message">
+        No tasks in this card yet
       </div>
       <slot></slot>
+      
+      <!-- Add Task Button -->
+      <div class="add-task-section">
+        <button @click="openAddTaskModal" class="add-task-btn" title="Add task to this card">
+          <span class="plus-icon">+</span>
+          <span>Add task</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -135,10 +145,59 @@ export default {
   transition: all 0.3s ease;
   transform: scale(1.02);
 }
-.no-tasks-in-card {
-  color: #888;
+.no-tasks-message {
+  color: #999;
   font-style: italic;
   text-align: center;
-  padding: 1rem 0;
+  padding: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.add-task-section {
+  padding: 0.75rem 0;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(67, 206, 162, 0.15);
+}
+
+.add-task-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(67, 206, 162, 0.2);
+}
+
+.add-task-btn:hover {
+  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(67, 206, 162, 0.3);
+}
+
+.add-task-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(67, 206, 162, 0.2);
+}
+
+.plus-icon {
+  font-size: 1rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 </style>

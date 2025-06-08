@@ -16,6 +16,7 @@ export const useDataStore = defineStore("data", {
     loggedIn: localStorage.getItem("loggedIn") === "true",
   }),
   actions: {
+    
     //only projects from the user token
     async fetchProjects() {
       try {
@@ -170,33 +171,77 @@ export const useDataStore = defineStore("data", {
       }
     },
 
+    
     async createTask(projectId, taskData) {
       try {
         const response = await apiClient.tasks().addTask(projectId, taskData);
-        await this.fetchTasks(projectId);
-        return response.data;
+        const newTask = response.data;
+        
+        // Add the new task to local state instead of refetching all tasks
+        this.tasks.push(newTask);
+        
+        // If the task is assigned to a card, update the card's tasks in local state
+        if (newTask.card_id) {
+          const cardIndex = this.cards.findIndex(card => card.id === newTask.card_id);
+          if (cardIndex !== -1) {
+            if (!this.cards[cardIndex].Tasks) {
+              this.cards[cardIndex].Tasks = [];
+            }
+            this.cards[cardIndex].Tasks.push(newTask);
+          }
+        }
+        
+        return newTask;
       } catch (error) {
         console.error("Error creating task:", error);
-        return null;
+        throw error;
       }
     },
 
+    
     async updateTask(taskData) {
       try {
         const response = await apiClient.tasks().updateTask(taskData);
-        const index = this.tasks.findIndex((task) => task.id === taskData.id);
-        if (index !== -1) this.tasks[index] = response.data;
-        return response.data;
+        const updatedTask = response.data;
+        
+        // Update task in local state
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskData.id);
+        if (taskIndex !== -1) {
+          this.tasks[taskIndex] = updatedTask;
+        }
+        
+        // Update task in cards state as well
+        this.cards.forEach(card => {
+          if (card.Tasks) {
+            const cardTaskIndex = card.Tasks.findIndex(task => task.id === taskData.id);
+            if (cardTaskIndex !== -1) {
+              card.Tasks[cardTaskIndex] = updatedTask;
+            }
+          }
+        });
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error updating task:", error);
-        return null;
+        throw error;
       }
     },
 
+    
     async deleteTask(taskId) {
       try {
         await apiClient.tasks().removeTask(taskId);
+        
+        // Remove task from tasks state
         this.tasks = this.tasks.filter((task) => task.id !== taskId);
+        
+        // Remove task from cards state as well
+        this.cards.forEach(card => {
+          if (card.Tasks) {
+            card.Tasks = card.Tasks.filter(task => task.id !== taskId);
+          }
+        });
+        
         return true;
       } catch (error) {
         console.error("Error deleting task:", error);
@@ -209,23 +254,56 @@ export const useDataStore = defineStore("data", {
         const response = await apiClient
           .tasks()
           .updateTaskPriority(taskId, priority);
-        const index = this.tasks.findIndex((task) => task.id === taskId);
-        if (index !== -1) this.tasks[index] = response.data;
-        return response.data;
+        const updatedTask = response.data;
+        
+        // Update task in local state
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
+        if (taskIndex !== -1) {
+          this.tasks[taskIndex] = updatedTask;
+        }
+        
+        // Update task in cards state as well
+        this.cards.forEach(card => {
+          if (card.Tasks) {
+            const cardTaskIndex = card.Tasks.findIndex(task => task.id === taskId);
+            if (cardTaskIndex !== -1) {
+              card.Tasks[cardTaskIndex] = updatedTask;
+            }
+          }
+        });
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error updating task priority:", error);
         return null;
       }
     },
 
+    
     async updateTaskStatus(taskId, status) {
       try {
         const response = await apiClient
           .tasks()
           .updateTaskStatus(taskId, status);
-        const index = this.tasks.findIndex((task) => task.id === taskId);
-        if (index !== -1) this.tasks[index] = response.data;
-        return response.data;
+        const updatedTask = response.data;
+        
+        // Update task in local state
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
+        if (taskIndex !== -1) {
+          this.tasks[taskIndex] = updatedTask;
+        }
+        
+        // Update task in cards state as well
+        this.cards.forEach(card => {
+          if (card.Tasks) {
+            const cardTaskIndex = card.Tasks.findIndex(task => task.id === taskId);
+            if (cardTaskIndex !== -1) {
+              card.Tasks[cardTaskIndex] = updatedTask;
+            }
+          }
+        });
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error updating task status:", error);
         return null;
@@ -303,7 +381,16 @@ export const useDataStore = defineStore("data", {
     async updateCard(cardData) {
       try {
         const response = await apiClient.cards().updateCard(cardData);
-        return response.data.card;
+        const updatedCard = response.data.card;
+        
+        // Update card in local state
+        const cardIndex = this.cards.findIndex((card) => card.id === cardData.id);
+        if (cardIndex !== -1) {
+          // Preserve the Tasks array when updating the card
+          this.cards[cardIndex] = { ...updatedCard, Tasks: this.cards[cardIndex].Tasks || [] };
+        }
+        
+        return updatedCard;
       } catch (error) {
         console.error("Error updating card:", error);
         return null;
@@ -321,14 +408,56 @@ export const useDataStore = defineStore("data", {
       }
     },
 
-    async assignTaskToCard(cardId, taskId) {
+    // Method to reorder cards locally
+    reorderCards(fromIndex, toIndex) {
+      if (fromIndex === toIndex) return;
+      
+      const updated = [...this.cards];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      this.cards = updated;
+    },
+
+    // Method to reorder tasks locally
+    reorderTasks(fromIndex, toIndex) {
+      if (fromIndex === toIndex) return;
+      
+      const updated = [...this.tasks];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      this.tasks = updated;
+    },async assignTaskToCard(cardId, taskId) {
       try {
         const response = await apiClient.cards().assignTask(cardId, taskId);
+        const updatedTask = response.data.task;
+        
+        // Update task in local state
         const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
-          this.tasks[taskIndex] = response.data.task;
+          const oldCardId = this.tasks[taskIndex].card_id;
+          this.tasks[taskIndex] = updatedTask;
+          
+          // Remove task from old card's tasks array
+          if (oldCardId) {
+            const oldCardIndex = this.cards.findIndex(card => card.id === oldCardId);
+            if (oldCardIndex !== -1 && this.cards[oldCardIndex].Tasks) {
+              this.cards[oldCardIndex].Tasks = this.cards[oldCardIndex].Tasks.filter(
+                task => task.id !== taskId
+              );
+            }
+          }
+          
+          // Add task to new card's tasks array
+          const cardIndex = this.cards.findIndex(card => card.id === cardId);
+          if (cardIndex !== -1) {
+            if (!this.cards[cardIndex].Tasks) {
+              this.cards[cardIndex].Tasks = [];
+            }
+            this.cards[cardIndex].Tasks.push(updatedTask);
+          }
         }
-        return response.data.task;
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error assigning task to card:", error);
         return null;
@@ -338,11 +467,23 @@ export const useDataStore = defineStore("data", {
     async removeTaskFromCard(cardId, taskId) {
       try {
         const response = await apiClient.cards().removeTask(cardId, taskId);
+        const updatedTask = response.data.task;
+        
+        // Update task in local state
         const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
-          this.tasks[taskIndex] = response.data.task;
+          this.tasks[taskIndex] = updatedTask;
         }
-        return response.data.task;
+        
+        // Remove task from card's tasks array
+        const cardIndex = this.cards.findIndex(card => card.id === cardId);
+        if (cardIndex !== -1 && this.cards[cardIndex].Tasks) {
+          this.cards[cardIndex].Tasks = this.cards[cardIndex].Tasks.filter(
+            task => task.id !== taskId
+          );
+        }
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error removing task from card:", error);
         return null;
@@ -352,14 +493,40 @@ export const useDataStore = defineStore("data", {
     async updateTaskCard(taskId, cardId) {
       try {
         const response = await apiClient.tasks().updateTaskCard(taskId, cardId);
+        const updatedTask = response.data;
+        
+        // Update task in tasks state
         const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
-          this.tasks[taskIndex] = response.data;
+          const oldCardId = this.tasks[taskIndex].card_id;
+          this.tasks[taskIndex] = updatedTask;
+          
+          // Remove task from old card's tasks array
+          if (oldCardId) {
+            const oldCardIndex = this.cards.findIndex(card => card.id === oldCardId);
+            if (oldCardIndex !== -1 && this.cards[oldCardIndex].Tasks) {
+              this.cards[oldCardIndex].Tasks = this.cards[oldCardIndex].Tasks.filter(
+                task => task.id !== taskId
+              );
+            }
+          }
+          
+          // Add task to new card's tasks array
+          if (cardId) {
+            const newCardIndex = this.cards.findIndex(card => card.id === cardId);
+            if (newCardIndex !== -1) {
+              if (!this.cards[newCardIndex].Tasks) {
+                this.cards[newCardIndex].Tasks = [];
+              }
+              this.cards[newCardIndex].Tasks.push(updatedTask);
+            }
+          }
         }
-        return response.data;
+        
+        return updatedTask;
       } catch (error) {
         console.error("Error updating task's card:", error);
-        return null;
+        throw error;
       }
     },
 

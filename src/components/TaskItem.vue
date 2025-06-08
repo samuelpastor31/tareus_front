@@ -663,6 +663,58 @@ export default {
   font-weight: 600;
 }
 
+/* Colored option styling for form selects */
+.form-select option {
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Priority option colors */
+.form-select option[value="high"] {
+  color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+  font-weight: 700;
+}
+
+.form-select option[value="medium"] {
+  color: #f9a825;
+  background-color: rgba(249, 168, 37, 0.1);
+  font-weight: 600;
+}
+
+.form-select option[value="low"] {
+  color: #43cea2;
+  background-color: rgba(67, 206, 162, 0.1);
+  font-weight: 600;
+}
+
+/* Status option colors */
+.form-select option[value="pending"] {
+  color: #f9a825;
+  background-color: rgba(249, 168, 37, 0.1);
+  font-weight: 600;
+}
+
+.form-select option[value="in_progress"] {
+  color: #185a9d;
+  background-color: rgba(24, 90, 157, 0.1);
+  font-weight: 600;
+}
+
+.form-select option[value="completed"] {
+  color: #43cea2;
+  background-color: rgba(67, 206, 162, 0.1);
+  font-weight: 600;
+}
+
+/* Default option styling */
+.form-select option[value=""] {
+  color: #666;
+  background-color: #ffffff;
+  font-style: italic;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .task-card {
