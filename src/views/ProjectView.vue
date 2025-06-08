@@ -73,6 +73,8 @@ export default {
       "fetchTasks",
       "createTask",
       "updateTask",
+      "updateTaskPriority",
+      "updateTaskStatus",
       "fetchCards",
       "createCard",
       "updateCard",
@@ -546,6 +548,38 @@ export default {
       }
     },
 
+    async handleUpdateTaskPriority(taskId, priority) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to edit tasks";
+        return;
+      }
+
+      try {
+        await this.updateTaskPriority(taskId, priority);
+        await this.loadTasks();
+        await this.loadCards();
+      } catch (error) {
+        console.error('Error updating task priority:', error);
+        this.error = "Error updating task priority";
+      }
+    },
+
+    async handleUpdateTaskStatus(taskId, status) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to edit tasks";
+        return;
+      }
+
+      try {
+        await this.updateTaskStatus(taskId, status);
+        await this.loadTasks();
+        await this.loadCards();
+      } catch (error) {
+        console.error('Error updating task status:', error);
+        this.error = "Error updating task status";
+      }
+    },
+
     resetDragState() {
       this.draggingTask = null;
       this.draggingCard = null;
@@ -602,7 +636,9 @@ export default {
           @drag-enter="onDragEnter" @drag-leave="onDragLeave">
           <task-item v-for="(task, taskIdx) in card.Tasks" :key="task.id" :task="task" class="task-in-card"
             draggable="true" @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)" @dragend="onDragEnd"
-            @task-updated="handleTaskUpdate">
+            @task-updated="handleTaskUpdate" 
+            @update-priority="handleUpdateTaskPriority"
+            @update-status="handleUpdateTaskStatus">
             <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)"
               class="remove-from-card-btn">
               Remove from card
@@ -630,7 +666,10 @@ export default {
       @assign-to-card="assignTaskToCardHandler">
       <template #default="{ task, idx, cards }">
         <task-item :key="task.id" :task="task" class="unassigned-task" draggable="true"
-          @dragstart="(e) => onDragStart(task, idx, null, e)" @dragend="onDragEnd" @task-updated="handleTaskUpdate">
+          @dragstart="(e) => onDragStart(task, idx, null, e)" @dragend="onDragEnd" 
+          @task-updated="handleTaskUpdate"
+          @update-priority="handleUpdateTaskPriority" 
+          @update-status="handleUpdateTaskStatus">
           <div class="assign-to-card">
             <select @change="(e) => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
               <option value="">Assign to card</option>
@@ -729,6 +768,9 @@ export default {
   background: white;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .task-in-card:last-child {
@@ -762,6 +804,9 @@ export default {
 .unassigned-task {
   margin-bottom: 0.8rem;
   cursor: grab;
+  min-width: 280px;
+  max-width: 340px;
+  flex-shrink: 0;
 }
 
 .unassigned-task:active {

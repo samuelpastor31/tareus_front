@@ -32,15 +32,20 @@ export default {
     const store = useDataStore();
     return { store };
   },
-  watch: {
+ watch: {
     isVisible(newVal) {
       if (newVal) {
         this.loadComments();
+        // Disable body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Re-enable body scroll when modal is closed
+        document.body.style.overflow = '';
       }
     },
   },
   methods: {
-    async loadComments() {
+ async loadComments() {
       if (!this.taskId) return;
 
       this.loading = true;
@@ -138,15 +143,20 @@ export default {
       this.$emit('close');
     }
   },
+
+  beforeUnmount() {
+    // Ensure body scroll is re-enabled if component is destroyed while modal is open
+    document.body.style.overflow = '';
+  },
 };
 </script>
 
 <template>
-  <div v-if="isVisible" class="comments-overlay" @click="closeComments">
-    <div class="comments-panel" @click.stop>
+  <div v-if="isVisible" class="comments-overlay" @click="closeComments" @keydown.esc="closeComments">
+    <div class="comments-panel" @click.stop @mousedown.stop>
       <div class="comments-header">
         <h3>Task Comments</h3>
-        <button @click="closeComments" class="close-btn">&times;</button>
+        <button @click="closeComments" class="close-btn" type="button">&times;</button>
       </div>
 
       <div class="comments-content">
@@ -167,16 +177,16 @@ export default {
             <div v-if="editingComment === comment.id" class="comment-edit">
               <textarea v-model="editContent" class="edit-textarea" rows="3"></textarea>
               <div class="edit-actions">
-                <button @click="saveEdit(comment.id)" class="save-btn">Save</button>
-                <button @click="cancelEdit" class="cancel-btn">Cancel</button>
+                <button @click="saveEdit(comment.id)" class="save-btn">💾 Save</button>
+                <button @click="cancelEdit" class="cancel-btn">❌ Cancel</button>
               </div>
             </div>
 
             <div v-else class="comment-content">
               <p>{{ comment.content }}</p>
               <div v-if="canEditComment(comment)" class="comment-actions">
-                <button @click="startEdit(comment)" class="edit-btn">Edit</button>
-                <button @click="deleteComment(comment.id)" class="delete-btn">Delete</button>
+                <button @click="startEdit(comment)" class="edit-btn">✏️ Edit</button>
+                <button @click="deleteComment(comment.id)" class="delete-btn">🗑️ Delete</button>
               </div>
             </div>
           </div>
@@ -184,18 +194,19 @@ export default {
         <div class="add-comment">
           <textarea v-model="newComment" placeholder="Write a comment..." class="comment-input" rows="3"
             @keydown.ctrl.enter="addComment"></textarea>
-          <button @click="addComment" :disabled="!newComment.trim()" class="add-comment-btn">
-            Add Comment
+            <button @click="addComment" :disabled="!newComment.trim()" class="add-comment-btn">
+            💬 Add Comment
           </button>
 
         </div>
       </div>
     </div>
-
     <!-- Delete confirmation modal -->
-    <confirm-modal :visible="showDeleteModal" title="Confirm Deletion"
-      :message="`Are you sure you want to delete this comment?`" confirmText="Delete" cancelText="Cancel"
-      :dangerMode="true" @confirm="confirmDeleteComment" @cancel="cancelDeleteComment" />
+    <Teleport to="body">
+      <confirm-modal :visible="showDeleteModal" title="Confirm Deletion"
+        :message="`Are you sure you want to delete this comment?`" confirmText="Delete" cancelText="Cancel"
+        :dangerMode="true" @confirm="confirmDeleteComment" @cancel="cancelDeleteComment" />
+    </Teleport>
   </div>
 </template>
 
@@ -206,11 +217,12 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
 }
 
 .comments-panel {
@@ -220,7 +232,11 @@ export default {
   max-width: 600px;
   max-height: 80vh;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: scale(1);
+  transition: transform 0.2s ease-out;
+  z-index: 10000;
+  position: relative;
 }
 
 .comments-header {
@@ -239,21 +255,28 @@ export default {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+  border: 2px solid rgba(102, 102, 102, 0.2);
+  font-size: 1.5rem;
   cursor: pointer;
   color: #666;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .close-btn:hover {
-  color: #333;
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%);
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
 }
 
 .comments-content {
@@ -313,28 +336,42 @@ export default {
 
 .edit-btn,
 .delete-btn {
-  background: none;
-  border: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+  border: 2px solid transparent;
   cursor: pointer;
   font-size: 0.85rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .edit-btn {
   color: #185a9d;
+  border-color: rgba(24, 90, 157, 0.2);
 }
 
 .edit-btn:hover {
-  background: rgba(24, 90, 157, 0.1);
+  background: linear-gradient(135deg, rgba(24, 90, 157, 0.1) 0%, rgba(24, 90, 157, 0.05) 100%);
+  border-color: #185a9d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(24, 90, 157, 0.15);
 }
 
 .delete-btn {
   color: #d32f2f;
+  border-color: rgba(211, 47, 47, 0.2);
 }
 
 .delete-btn:hover {
-  background: rgba(211, 47, 47, 0.1);
+  background: linear-gradient(135deg, rgba(211, 47, 47, 0.1) 0%, rgba(211, 47, 47, 0.05) 100%);
+  border-color: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.15);
 }
 
 .comment-edit {
@@ -343,12 +380,23 @@ export default {
 
 .edit-textarea {
   width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0.5rem;
+  border: 2px solid rgba(67, 206, 162, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
   font-family: inherit;
+  font-size: 0.9rem;
   resize: vertical;
-  min-height: 60px;
+  min-height: 80px;
+  transition: all 0.3s ease;
+  background: white;
+  box-sizing: border-box;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: #43cea2;
+  box-shadow: 0 0 0 3px rgba(67, 206, 162, 0.1);
+  transform: translateY(-1px);
 }
 
 .edit-actions {
@@ -358,29 +406,49 @@ export default {
 }
 
 .save-btn {
-  background: #185a9d;
+  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.2);
 }
 
 .save-btn:hover {
-  background: #14486d;
+  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 206, 162, 0.3);
 }
 
 .cancel-btn {
-  background: #666;
+  background: linear-gradient(135deg, #666 0%, #555 100%);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(102, 102, 102, 0.2);
 }
 
 .cancel-btn:hover {
-  background: #555;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 102, 102, 0.3);
 }
 
 .add-comment {
@@ -390,36 +458,52 @@ export default {
 
 .comment-input {
   width: 100%;
-  border: 1px solid #ddd;
+  border: 2px solid rgba(67, 206, 162, 0.2);
   border-radius: 8px;
   padding: 0.75rem;
   font-family: inherit;
+  font-size: 0.9rem;
   resize: vertical;
   min-height: 80px;
   margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+  background: white;
+  box-sizing: border-box;
 }
 
 .comment-input:focus {
   outline: none;
-  border-color: #185a9d;
+  border-color: #43cea2;
+  box-shadow: 0 0 0 3px rgba(67, 206, 162, 0.1);
+  transform: translateY(-1px);
 }
 
 .add-comment-btn {
-  background: #185a9d;
+  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(24, 90, 157, 0.2);
 }
 
 .add-comment-btn:hover:not(:disabled) {
-  background: #14486d;
+  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 90, 157, 0.3);
 }
 
 .add-comment-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 </style>

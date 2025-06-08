@@ -59,20 +59,24 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
+  z-index: 15000;
+  backdrop-filter: blur(2px);
 }
 
 .modal-container {
   background-color: white;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 2rem;
   width: 400px;
   max-width: 90vw;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: scale(1);
+  transition: transform 0.2s ease-out;
+  position: relative;
 }
 
 .modal-container h3 {
@@ -92,37 +96,51 @@ export default {
 }
 
 .confirm-btn {
-  background-color: #43cea2;
+  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.2);
 }
 
 .danger-btn {
-  background-color: #dc3545;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
 }
 
 .cancel-btn {
-  background-color: #6c757d;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
 }
 
 .confirm-btn:hover {
-  background-color: #3bb292;
+  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 206, 162, 0.3);
 }
 
 .danger-btn:hover {
-  background-color: #c82333;
+  background: linear-gradient(135deg, #a71e2a 0%, #922b38 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .cancel-btn:hover {
-  background-color: #5a6268;
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 </style>

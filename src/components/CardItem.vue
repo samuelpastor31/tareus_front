@@ -108,7 +108,10 @@ export default {
   min-height: 150px;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
   transition: background-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
   /* Estilo para la barra de desplazamiento */
   scrollbar-width: thin;
   scrollbar-color: #43cea2 #f0f4f8;
