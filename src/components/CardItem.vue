@@ -9,6 +9,13 @@ export default {
     dragOverCardId: {
       type: [Number, String, null],
       default: null
+    },    canCreate: {
+      type: Boolean,
+      default: false
+    },
+    canEdit: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['card-dragstart', 'card-drop', 'task-drop', 'drag-enter', 'drag-leave', 'card-dragend', 'add-task'],
@@ -45,7 +52,7 @@ export default {
 <template>
   <div 
     class="card-column"
-    draggable="true"
+    :draggable="canEdit"
     @dragstart.self="onCardDragStart"
     @dragend.self="onCardDragEnd"
     @dragover.prevent
@@ -70,7 +77,7 @@ export default {
       <slot></slot>
       
       <!-- Add Task Button -->
-      <div class="add-task-section">
+      <div v-if="canCreate" class="add-task-section">
         <button @click="openAddTaskModal" class="add-task-btn" title="Add task to this card">
           <span class="plus-icon">+</span>
           <span>Add task</span>

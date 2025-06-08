@@ -11,6 +11,10 @@ export default {
       type: Object,
       required: true,
     },
+    canEdit: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -31,10 +35,12 @@ export default {
       if (status === 'completed') return 'Completed';
       return status || 'Pending';
     },
+
     capitalize(str) {
       if (!str) return '';
       return str.charAt(0).toUpperCase() + str.slice(1);
     },
+
     openComments(event) {
       // Prevent drag and drop conflicts
       if (event) {
@@ -43,10 +49,14 @@ export default {
       }
       this.showComments = true;
     },
+
     closeComments() {
       this.showComments = false;
     },
+    
     editTask() {
+      if (!this.canEdit) return;
+      
       this.isEditing = true;
       this.editedTask = {
         title: this.task.title,
@@ -84,6 +94,8 @@ export default {
     },
 
     async updateTaskPriority(newPriority) {
+      if (!this.canEdit) return;
+      
       try {
         this.$emit('update-priority', this.task.id, newPriority);
       } catch (error) {
@@ -92,6 +104,8 @@ export default {
     },
 
     async updateTaskStatus(newStatus) {
+      if (!this.canEdit) return;
+      
       try {
         this.$emit('update-status', this.task.id, newStatus);
       } catch (error) {
@@ -103,18 +117,19 @@ export default {
 </script>
 
 <template>
-  <div class="task-card">
+  <div class="task-card">    
     <!-- Normal task view -->
-    <div v-if="!isEditing">
+    <div v-if="!isEditing || !canEdit">
       <div class="task-header">
         <span class="task-title">Title: {{ task.title }}</span>
         <span class="task-id">#ID: {{ task.id }}</span>
       </div>
       <div class="task-desc">Description: {{ task.description }}</div>
-      <div class="task-info">
+      <div class="task-info">       
         <span class="task-status">
           <strong>Status:</strong>
           <select 
+            v-if="canEdit"
             :value="task.status || 'pending'" 
             @change="updateTaskStatus($event.target.value)"
             :class="['inline-select', 'status-select', `status-${task.status}`]"
@@ -123,10 +138,14 @@ export default {
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
+          <span v-else :class="`status-${task.status}`">
+            {{ formatStatus(task.status) }}
+          </span>
         </span>
         <span class="task-priority">
           <strong>Priority:</strong>
           <select 
+            v-if="canEdit"
             :value="task.priority || 'low'" 
             @change="updateTaskPriority($event.target.value)"
             :class="['inline-select', 'priority-select', `priority-${task.priority}`]"
@@ -135,19 +154,22 @@ export default {
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
+          <span v-else :class="`priority-${task.priority}`">
+            {{ capitalize(task.priority || 'low') }}
+          </span>
         </span>
       </div>
-      <div class="task-actions">
+      <div class="task-actions">        
         <button @click="openComments($event)" class="comments-btn" title="View comments" 
                 @mousedown.stop @dragstart.prevent>
           💬
         </button>
-        <button @click="editTask" class="edit-btn" title="Edit task">
+        <button v-if="canEdit" @click="editTask" class="edit-btn" title="Edit task">
           ✏️
         </button>
-      </div>
+      </div>    
     </div> <!-- Edit form -->
-    <div v-else class="edit-form">
+    <div v-else-if="isEditing && canEdit" class="edit-form">
       <div class="task-header">
         <span class="task-id">#ID: {{ task.id }}</span>
       </div>
@@ -191,7 +213,7 @@ export default {
       </div>    </div>
     <!-- Use Teleport to render modal at body level to avoid z-index issues -->
     <Teleport to="body">
-      <TaskComments :task-id="task.id" :is-visible="showComments" @close="closeComments" />
+      <TaskComments :task-id="task.id" :is-visible="showComments" :can-edit="canEdit" @close="closeComments" />
     </Teleport>
   </div>
 </template>

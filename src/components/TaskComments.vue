@@ -6,7 +6,7 @@ export default {
   name: 'TaskComments',
   components: {
     ConfirmModal,
-  },
+  }, 
   props: {
     taskId: {
       type: Number,
@@ -15,6 +15,10 @@ export default {
     isVisible: {
       type: Boolean,
       default: false,
+    },
+    canEdit: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {
@@ -58,8 +62,9 @@ export default {
         this.loading = false;
       }
     },
-
+    
     async addComment() {
+      if (!this.canEdit) return;
       if (!this.newComment.trim()) return;
 
       try {
@@ -132,9 +137,10 @@ export default {
         minute: '2-digit'
       });
     },
-
     canEditComment(comment) {
-      // User can edit if they are the author of the comment
+      // User can edit if they have edit permission AND are the author of the comment
+      if (!this.canEdit) return false;
+      
       const currentUserId = localStorage.getItem('user_id');
       return currentUserId && comment.user_id && parseInt(currentUserId) === parseInt(comment.user_id);
     },
@@ -189,9 +195,9 @@ export default {
                 <button @click="deleteComment(comment.id)" class="delete-btn">🗑️ Delete</button>
               </div>
             </div>
-          </div>
+          </div>       
         </div>
-        <div class="add-comment">
+        <div v-if="canEdit" class="add-comment">
           <textarea v-model="newComment" placeholder="Write a comment..." class="comment-input" rows="3"
             @keydown.ctrl.enter="addComment"></textarea>
             <button @click="addComment" :disabled="!newComment.trim()" class="add-comment-btn">

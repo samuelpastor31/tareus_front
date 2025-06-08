@@ -11,11 +11,26 @@ export default {
     isOwner() {
       const userId = Number(localStorage.getItem('user_id'));
       return userId && userId === this.project.owner_id;
+    },
+    canViewProject() {
+      const userId = Number(localStorage.getItem('user_id'));
+      // Owner can always view
+      if (userId && userId === this.project.owner_id) {
+        return true;
+      }
+      // Check if user has view permission
+      return this.project.ProjectUser?.can_view || false;
     }
   },
   methods: {
     goToProject() {
-      this.$router.push(`/project/${this.project.id}/tasks`);
+      // Only navigate if user has view permissions
+      if (this.canViewProject) {
+        this.$router.push(`/project/${this.project.id}/tasks`);
+      } else {
+        // Optionally show a message or do nothing
+        console.warn('No tienes permisos para ver este proyecto');
+      }
     },
     formatDate(dateStr) {
       if (!dateStr) return "";
@@ -34,7 +49,15 @@ export default {
 </script>
 
 <template>
-  <div class="card project-card-clickable" @click="goToProject">
+  <div :class="[
+    'card',
+    canViewProject ? 'project-card-clickable' : 'project-card-disabled'
+  ]" @click="canViewProject ? goToProject() : null">
+    <div v-if="!canViewProject" class="no-access-overlay">
+      <i class="material-icons">lock</i>
+      <span>Sin acceso</span>
+    </div>
+
     <h3 class="title">Project: ({{ project.id }})</h3>
     <h4 class="name" v-if="project.name">Name: {{ project.name }}</h4>
     <p class="description" v-if="project.description">Description: {{ project.description }}</p>
@@ -91,6 +114,46 @@ export default {
   box-shadow: 0 8px 32px rgba(24, 90, 157, 0.15);
   transform: translateY(-2px);
   border-color: rgba(67, 206, 162, 0.3);
+}
+
+.project-card-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.project-card-disabled::before {
+  background: linear-gradient(90deg, #bbb 0%, #888 100%);
+}
+
+.project-card-disabled:hover {
+  background: #f5f5f5;
+  box-shadow: 0 4px 16px rgba(24, 90, 157, 0.08);
+  transform: none;
+  border-color: #e0e0e0;
+}
+
+.no-access-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e74c3c;
+  font-weight: 600;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.no-access-overlay .material-icons {
+  font-size: 2rem;
 }
 
 .title {
