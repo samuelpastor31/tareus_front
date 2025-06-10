@@ -94,12 +94,13 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-width: 320px;
   max-width: 400px;
+  min-height: 450px;
   display: flex;
   flex-direction: column;
   cursor: grab;
   border: 1px solid #e0e0e0;
   height: fit-content;
-  max-height: 550px;
+  max-height: 600px;
 }
 .card-column:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -122,8 +123,8 @@ export default {
 .card-tasks {
   padding: 1rem;
   flex-grow: 1;
-  min-height: 150px;
-  max-height: 400px;
+  min-height: 300px;
+  max-height: 550px;
   overflow-y: auto;
   overflow-x: hidden;
   transition: background-color 0.2s;

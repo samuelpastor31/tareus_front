@@ -97,12 +97,8 @@ export default {
     // Permission checking methods
     canEditProject(project) {
       const userId = Number(localStorage.getItem('user_id'));
-      // Owner can always edit
-      if (userId && userId === project.owner_id) {
-        return true;
-      }
-      // Check if user has edit permission
-      return project.ProjectUser?.can_edit || false;
+      // Only owner can edit
+      return userId && userId === project.owner_id;
     },
 
     canDeleteProject(project) {
