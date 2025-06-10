@@ -13,6 +13,10 @@ export default {
     cardName: {
       type: String,
       default: ''
+    },
+    projectUsers: {
+      type: Array,
+      default: () => []
     }
   },
   data() {
@@ -20,7 +24,8 @@ export default {
       title: '',
       description: '',
       priority: '',
-      status: ''
+      status: '',
+      assigned_user_id: null
     };
   },
   emits: ['add-task', 'close'],
@@ -33,7 +38,8 @@ export default {
         description: this.description,
         priority: this.priority || undefined,
         status: this.status || undefined,
-        cardId: this.cardId
+        cardId: this.cardId,
+        assigned_user_id: this.assigned_user_id || undefined
       });
 
       this.resetForm();
@@ -43,6 +49,7 @@ export default {
       this.description = '';
       this.priority = '';
       this.status = '';
+      this.assigned_user_id = null;
     },
     closeModal() {
       this.resetForm();
@@ -121,6 +128,19 @@ export default {
                   <option value="pending">⏳ Pending</option>
                   <option value="in_progress">⚙️ In Progress</option>
                   <option value="completed">✅ Completed</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="assigned_user">👤 Assigned to</label>
+                <select id="assigned_user" v-model="assigned_user_id" class="form-select">
+                  <option :value="null">Unassigned</option>                  <option 
+                    v-for="user in projectUsers" 
+                    :key="user.id" 
+                    :value="user.id"
+                  >
+                    {{ user.username || user.email }}
+                  </option>
                 </select>
               </div>
             </div>
@@ -287,7 +307,7 @@ export default {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
 }

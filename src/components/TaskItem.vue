@@ -15,6 +15,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    projectUsers: {
+      type: Array,
+      default: () => [],
+    },
   },
   data() {
     return {
@@ -24,7 +28,8 @@ export default {
         title: '',
         description: '',
         priority: '',
-        status: ''
+        status: '',
+        assigned_user_id: null
       }
     };
   },
@@ -39,6 +44,10 @@ export default {
     capitalize(str) {
       if (!str) return '';
       return str.charAt(0).toUpperCase() + str.slice(1);
+    },    getAssignedUserName(userId) {
+      if (!userId) return 'Unassigned';
+      const user = this.projectUsers.find(u => u.id === userId);
+      return user ? (user.username || user.email) : 'Unknown User';
     },
 
     openComments(event) {
@@ -62,7 +71,8 @@ export default {
         title: this.task.title,
         description: this.task.description,
         priority: this.task.priority || '',
-        status: this.task.status || 'pending'
+        status: this.task.status || 'pending',
+        assigned_user_id: this.task.assigned_user_id || null
       };
     },
 
@@ -73,7 +83,8 @@ export default {
           title: this.editedTask.title,
           description: this.editedTask.description,
           priority: this.editedTask.priority || null,
-          status: this.editedTask.status
+          status: this.editedTask.status,
+          assigned_user_id: this.editedTask.assigned_user_id || null
         };
 
         this.$emit('task-updated', updatedTask);
@@ -85,11 +96,13 @@ export default {
 
     cancelEdit() {
       this.isEditing = false;
+      
       this.editedTask = {
         title: '',
         description: '',
         priority: '',
-        status: ''
+        status: '',
+        assigned_user_id: null
       };
     },
 
@@ -111,6 +124,16 @@ export default {
       } catch (error) {
         console.error('Error updating task status:', error);
       }
+    },
+
+    async updateTaskAssignedUser(newUserId) {
+      if (!this.canEdit) return;
+
+      try {
+        this.$emit('update-assigned-user', this.task.id, newUserId);
+      } catch (error) {
+        console.error('Error updating task assigned user:', error);
+      }
     }
   }
 };
@@ -128,12 +151,8 @@ export default {
       <div class="task-info">       
         <span class="task-status">
           <strong>Status:</strong>
-          <select 
-            v-if="canEdit"
-            :value="task.status || 'pending'" 
-            @change="updateTaskStatus($event.target.value)"
-            :class="['inline-select', 'status-select', `status-${task.status}`]"
-          >
+          <select v-if="canEdit" :value="task.status || 'pending'" @change="updateTaskStatus($event.target.value)"
+            :class="['inline-select', 'status-select', `status-${task.status}`]">
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
@@ -158,10 +177,21 @@ export default {
             {{ capitalize(task.priority || 'low') }}
           </span>
         </span>
+        <span class="task-assigned">
+          <strong>Assigned to:</strong> <select v-if="canEdit" :value="task.assigned_user_id || ''"
+            @change="updateTaskAssignedUser($event.target.value || null)" class="inline-select assigned-select">
+            <option value="">Unassigned</option>            <option v-for="user in projectUsers" :key="user.id" :value="user.id">
+              {{ user.username || user.email }}
+            </option>
+          </select>
+          <span v-else class="assigned-user">
+            {{ getAssignedUserName(task.assigned_user_id) }}
+          </span>
+        </span>
       </div>
-      <div class="task-actions">        
-        <button @click="openComments($event)" class="comments-btn" title="View comments" 
-                @mousedown.stop @dragstart.prevent>
+      <div class="task-actions">
+        <button @click="openComments($event)" class="comments-btn" title="View comments" @mousedown.stop
+          @dragstart.prevent>
           💬
         </button>
         <button v-if="canEdit" @click="editTask" class="edit-btn" title="Edit task">
@@ -183,7 +213,7 @@ export default {
         <textarea v-model="editedTask.description" class="form-textarea" placeholder="Task description" rows="3"
           required></textarea>
       </div>
- <div class="form-row">
+      <div class="form-row">
         <div class="form-group">
           <label>Priority:</label>
           <select v-model="editedTask.priority" :class="['form-select', `priority-${editedTask.priority}`]">
@@ -192,13 +222,21 @@ export default {
             <option value="high">High</option>
           </select>
         </div>
-
         <div class="form-group">
           <label>Status:</label>
           <select v-model="editedTask.status" :class="['form-select', `status-${editedTask.status}`]">
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Assigned to:</label>
+          <select v-model="editedTask.assigned_user_id" class="form-select">
+            <option :value="null">Unassigned</option>            <option v-for="user in projectUsers" :key="user.id" :value="user.id">
+              {{ user.username || user.email }}
+            </option>
           </select>
         </div>
       </div>
@@ -210,7 +248,8 @@ export default {
         <button @click="cancelEdit" class="cancel-btn">
           ❌ Cancel
         </button>
-      </div>    </div>
+      </div>    
+    </div>
     <!-- Use Teleport to render modal at body level to avoid z-index issues -->
     <Teleport to="body">
       <TaskComments :task-id="task.id" :is-visible="showComments" :can-edit="canEdit" @close="closeComments" />
@@ -309,14 +348,16 @@ export default {
 }
 
 .task-status,
-.task-priority {
+.task-priority,
+.task-assigned {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .task-status strong,
-.task-priority strong {
+.task-priority strong,
+.task-assigned strong {
   font-weight: 600;
   color: #185a9d;
   font-size: 0.85rem;
@@ -460,7 +501,7 @@ export default {
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
 }
 
@@ -565,6 +606,10 @@ export default {
 
 .priority-select {
   min-width: 90px;
+}
+
+.assigned-select {
+  min-width: 120px;
 }
 
 /* Enhanced status-based coloring for select options */
@@ -745,27 +790,27 @@ export default {
     max-width: 100%;
     margin: 0;
   }
-  
+
   /* For unassigned tasks that need to maintain width for horizontal scrolling */
   .unassigned-task .task-card {
     min-width: 280px;
     max-width: 320px;
     margin: 0 0.5rem;
   }
-  
+
   .task-info {
     gap: 0.5rem;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
-  
+
   .edit-actions {
     flex-direction: column;
   }
-  
+
   .inline-select {
     margin-left: 0.5rem;
     font-size: 0.8rem;

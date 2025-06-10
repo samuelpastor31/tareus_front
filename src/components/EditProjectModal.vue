@@ -148,15 +148,9 @@ export default {
             }
 
             // Handle permission hierarchy for existing users
-            if (permission === 'can_view') {
-                if (!user.permissions.can_view) {
-                    // If disabling view, disable edit and create
-                    user.permissions.can_edit = false;
-                    user.permissions.can_create = false;
-                }
-            } else if (permission === 'can_edit') {
+            if (permission === 'can_edit') {
                 if (user.permissions.can_edit) {
-                    // If enabling edit, auto-enable read
+                    // If enabling edit, auto-enable read (but view is always enabled anyway)
                     user.permissions.can_view = true;
                 } else {
                     // If disabling edit, disable create
@@ -181,15 +175,9 @@ export default {
 
         handleNewUserPermissionChange(user, permission) {
             // Handle permission hierarchy for new users to be added
-            if (permission === 'can_view') {
-                if (!user.permissions.can_view) {
-                    // If disabling view, disable edit and create
-                    user.permissions.can_edit = false;
-                    user.permissions.can_create = false;
-                }
-            } else if (permission === 'can_edit') {
+            if (permission === 'can_edit') {
                 if (user.permissions.can_edit) {
-                    // If enabling edit, auto-enable read
+                    // If enabling edit, auto-enable read (but view is always enabled anyway)
                     user.permissions.can_view = true;
                 } else {
                     // If disabling edit, disable create
@@ -436,9 +424,9 @@ export default {
                                         <div class="permission-checkboxes">
                                             <label class="permission-checkbox">
                                                 <input type="checkbox" v-model="user.permissions.can_view"
-                                                    :disabled="user.isOwner"
+                                                    :disabled="true"
                                                     @change="handlePermissionChange(user, 'can_view')" />
-                                                <span class="checkmark" :class="{ disabled: user.isOwner }"></span>
+                                                <span class="checkmark disabled"></span>
                                                 Read
                                             </label>
                                             <label class="permission-checkbox">
@@ -538,8 +526,9 @@ export default {
                                             <div class="permission-checkboxes">
                                                 <label class="permission-checkbox">
                                                     <input type="checkbox" v-model="user.permissions.can_view"
+                                                        :disabled="true"
                                                         @change="handleNewUserPermissionChange(user, 'can_view')" />
-                                                    <span class="checkmark"></span>
+                                                    <span class="checkmark disabled"></span>
                                                     Read
                                                 </label>
                                                 <label class="permission-checkbox">

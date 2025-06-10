@@ -23,6 +23,7 @@ export default {
   data() {
     return {
       projectId: null,
+      projectUsers: [],
       draggingTask: null,
       draggingCard: null,
       newTaskTitle: "",
@@ -77,6 +78,7 @@ export default {
       return Array.isArray(this.cards) ? [...this.cards] : [];
     },
   },
+  
   methods: {
     ...mapActions(useDataStore, [
       "fetchTasks",
@@ -84,11 +86,13 @@ export default {
       "updateTask",
       "updateTaskPriority",
       "updateTaskStatus",
+      "updateTaskAssignedUser",
       "fetchCards",
       "createCard",
       "updateCard",
       "updateTaskCard",
       "fetchProjects",
+      "fetchProjectUsers",
       "deleteTask",
       "deleteCard",
       "reorderCards",
@@ -154,6 +158,15 @@ export default {
         this.error = "Error loading cards";
       }
       this.loadingCards = false;
+    },
+    
+    async loadProjectUsers() {
+      try {
+        this.projectUsers = await this.fetchProjectUsers(this.projectId);
+      } catch (e) {
+        console.error("Error loading project users:", e);
+        this.error = "Error loading project users";
+      }
     },
 
     onDragStart(task, idx, cardId = null, event) {
@@ -561,6 +574,26 @@ export default {
       }
     },
 
+    async handleUpdateTaskAssignedUser(taskId, assignedUserId) {
+      if (!this.canModifyTasksAndCards) {
+        this.error = "You don't have permission to edit tasks";
+        return;
+      }
+
+      try {
+        await this.updateTaskAssignedUser(taskId, assignedUserId);
+      } catch (error) {
+        console.error('Error updating task assigned user:', error);
+        
+        // Handle specific error for user permissions
+        if (error.response?.data?.detail?.includes('can_view')) {
+          this.error = "The selected user doesn't have the required permissions for this project";
+        } else {
+          this.error = "Error updating task assigned user";
+        }
+      }
+    },
+
     resetDragState() {
       this.draggingTask = null;
       this.draggingCard = null;
@@ -606,6 +639,7 @@ export default {
           description: taskData.description,
           priority: taskData.priority || undefined,
           status: taskData.status || undefined,
+          assigned_user_id: taskData.assigned_user_id || undefined,
           card_id: taskData.cardId || undefined,
         });
 
@@ -626,8 +660,11 @@ export default {
 
     // Only load tasks and cards if project was successfully loaded
     if (projectLoaded) {
-      await this.loadTasks();
-      await this.loadCards();
+      await Promise.all([
+        this.loadTasks(),
+        this.loadCards(),
+        this.loadProjectUsers()
+      ]);
     }
   },
 };
@@ -649,11 +686,14 @@ export default {
         <card-item v-for="(card, idx) in cardsList" :key="card.id" :card="card" :dragOverCardId="dragOverCardId"
           :canCreate="canCreate" :canEdit="canEdit" @card-dragstart="(card, event) => onCardDragStart(card, idx, event)"
           @card-drop="(card, event) => onCardDrop(idx, event)" @card-dragend="onDragEnd" @task-drop="onTaskDropOnCard"
-          @drag-enter="onDragEnter" @drag-leave="onDragLeave" @add-task="handleAddTaskFromCard"><task-item
-            v-for="(task, taskIdx) in card.Tasks" :key="task.id" :task="task" :can-edit="canEdit" class="task-in-card"
-            :draggable="canModifyTasksAndCards" @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)"
-            @dragend="onDragEnd" @task-updated="handleTaskUpdate" @update-priority="handleUpdateTaskPriority"
-            @update-status="handleUpdateTaskStatus">
+          @drag-enter="onDragEnter" @drag-leave="onDragLeave" @add-task="handleAddTaskFromCard">
+          
+          <task-item
+            v-for="(task, taskIdx) in card.Tasks" :key="task.id" :task="task" :can-edit="canEdit"
+            :project-users="projectUsers" class="task-in-card" :draggable="canModifyTasksAndCards"
+            @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)" @dragend="onDragEnd"
+            @task-updated="handleTaskUpdate" @update-priority="handleUpdateTaskPriority"
+            @update-status="handleUpdateTaskStatus" @update-assigned-user="handleUpdateTaskAssignedUser">
             <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)"
               class="remove-from-card-btn">
               Remove from card
@@ -679,10 +719,12 @@ export default {
       @drag-enter-unassigned="onDragEnterUnassigned" @drag-leave-unassigned="onDragLeaveUnassigned"
       @drop-on-unassigned="onTaskDropOnUnassigned" @drag-start="onDragStart" @drag-end="onDragEnd"
       @assign-to-card="assignTaskToCardHandler">
-      <template #default="{ task, idx, cards }"> <task-item :key="task.id" :task="task" :can-edit="canEdit"
-          class="unassigned-task" :draggable="canModifyTasksAndCards"
+      <template #default="{ task, idx, cards }"> 
+        <task-item :key="task.id" :task="task" :can-edit="canEdit"
+          :project-users="projectUsers" class="unassigned-task" :draggable="canModifyTasksAndCards"
           @dragstart="(e) => onDragStart(task, idx, null, e)" @dragend="onDragEnd" @task-updated="handleTaskUpdate"
-          @update-priority="handleUpdateTaskPriority" @update-status="handleUpdateTaskStatus">
+          @update-priority="handleUpdateTaskPriority" @update-status="handleUpdateTaskStatus"
+          @update-assigned-user="handleUpdateTaskAssignedUser">
           <div class="assign-to-card">
             <select @change="(e) => assignTaskToCardHandler(task.id, e.target.value)" class="card-select">
               <option value="">Assign to card</option>
@@ -702,9 +744,11 @@ export default {
       ? `Are you sure you want to delete the task '${itemToDelete?.title}'?`
       : `Are you sure you want to delete the card '${itemToDelete?.name}'? All its tasks will also be deleted permanently.`
       " :confirmText="'Delete'" :cancelText="'Cancel'" :dangerMode="true" @confirm="confirmDelete"
-      @cancel="cancelDelete" /> <!-- Add Task Modal -->
-    <add-task-form v-if="canCreate" :isVisible="showAddTaskModal" :cardId="selectedCardId" :cardName="selectedCardName"
-      @add-task="handleAddTask" @close="closeAddTaskModal" />
+      @cancel="cancelDelete" /> 
+      <!-- Add Task Modal --> 
+      <add-task-form v-if="canCreate" :isVisible="showAddTaskModal"
+      :cardId="selectedCardId" :cardName="selectedCardName" :project-users="projectUsers" @add-task="handleAddTask"
+      @close="closeAddTaskModal" />
   </div>
 </template>
 

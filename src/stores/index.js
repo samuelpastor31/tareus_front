@@ -32,8 +32,7 @@ export const useDataStore = defineStore("data", {
     async fetchProjectUsers(projectId) {
       try {
         const response = await apiClient.projects().getProjectUsers(projectId);
-        this.users = response.data;
-        return this.users;
+        return response.data;
       } catch (error) {
         console.error("Error fetching project users:", error);
         return [];
@@ -307,6 +306,36 @@ export const useDataStore = defineStore("data", {
       } catch (error) {
         console.error("Error updating task status:", error);
         return null;
+      }
+    },
+
+    async updateTaskAssignedUser(taskId, assignedUserId) {
+      try {
+        const response = await apiClient
+          .tasks()
+          .updateTask({ id: taskId, assigned_user_id: assignedUserId });
+        const updatedTask = response.data;
+        
+        // Update task in local state
+        const taskIndex = this.tasks.findIndex((task) => task.id === taskId);
+        if (taskIndex !== -1) {
+          this.tasks[taskIndex] = updatedTask;
+        }
+        
+        // Update task in cards state as well
+        this.cards.forEach(card => {
+          if (card.Tasks) {
+            const cardTaskIndex = card.Tasks.findIndex(task => task.id === taskId);
+            if (cardTaskIndex !== -1) {
+              card.Tasks[cardTaskIndex] = updatedTask;
+            }
+          }
+        });
+        
+        return updatedTask;
+      } catch (error) {
+        console.error("Error updating task assigned user:", error);
+        throw error; // Propagate the error so the component can handle it
       }
     },
 

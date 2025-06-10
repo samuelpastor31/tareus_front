@@ -80,7 +80,7 @@
                                         <div class="permission-item">
                                             <label class="permission-label">
                                                 <input type="checkbox" v-model="user.permissions.can_view"
-                                                    class="permission-checkbox"
+                                                    class="permission-checkbox" :disabled="true"
                                                     @change="handlePermissionChange(user, 'can_view')" />
                                                 <span class="permission-text">Read</span>
                                             </label>
@@ -224,15 +224,9 @@ export default {
             }
         }, handlePermissionChange(user, permission) {
             // Handle hierarchical permission logic - auto-select prerequisites
-            if (permission === 'can_view') {
-                if (!user.permissions.can_view) {
-                    // If disabling read, disable all dependent permissions
-                    user.permissions.can_edit = false;
-                    user.permissions.can_create = false;
-                }
-            } else if (permission === 'can_edit') {
+            if (permission === 'can_edit') {
                 if (user.permissions.can_edit) {
-                    // If enabling edit, auto-enable read
+                    // If enabling edit, auto-enable read (but view is always enabled anyway)
                     user.permissions.can_view = true;
                 } else {
                     // If disabling edit, disable create
@@ -701,6 +695,17 @@ export default {
 
 .permission-text {
     user-select: none;
+}
+
+/* Disabled checkbox styles */
+.permission-checkbox input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.permission-label:has(input[type="checkbox"]:disabled) {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 .remove-user-btn {
