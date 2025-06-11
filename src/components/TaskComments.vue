@@ -6,10 +6,14 @@ export default {
   name: 'TaskComments',
   components: {
     ConfirmModal,
-  }, 
+  },
   props: {
     taskId: {
       type: Number,
+      required: true,
+    },
+    task: {
+      type: Object,
       required: true,
     },
     isVisible: {
@@ -19,6 +23,10 @@ export default {
     canEdit: {
       type: Boolean,
       default: true,
+    },
+    projectUsers: {
+      type: Array,
+      default: () => [],
     },
   },
   data() {
@@ -62,7 +70,7 @@ export default {
         this.loading = false;
       }
     },
-    
+
     async addComment() {
       if (!this.canEdit) return;
       if (!this.newComment.trim()) return;
@@ -127,16 +135,107 @@ export default {
       this.commentToDelete = null;
     },
 
+
     formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      if (!dateString) return 'N/A';
+
+      console.log('Formatting date:', dateString, 'type:', typeof dateString);
+
+      try {
+        let date;
+
+        // Handle different date formats
+        if (typeof dateString === 'string') {
+          // Try parsing the string as ISO date
+          date = new Date(dateString);
+        } else if (typeof dateString === 'object' && dateString instanceof Date) {
+          // Already a Date object
+          date = dateString;
+        } else {
+          console.warn('Unexpected date format:', dateString);
+          return 'Invalid Date Format';
+        }
+
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date after parsing:', dateString);
+          return 'Invalid Date';
+        }
+
+        const formatted = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        console.log('Successfully formatted date:', formatted);
+        return formatted;
+      } catch (error) {
+        console.error('Error formatting date:', error, 'Input:', dateString);
+        return 'Date Error';
+      }
     },
+
+    formatStatus(status) {
+      if (status === 'pending') return 'Pending';
+      if (status === 'in_progress' || status === 'in-progress') return 'In Progress';
+      if (status === 'completed') return 'Completed';
+      return status || 'Pending';
+    },
+
+    capitalize(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    },
+    
+    getAssignedUserName(userId) {
+      console.log('Getting assigned user name for ID:', userId, 'type:', typeof userId);
+      console.log('Available users:', this.projectUsers);
+      console.log('Task object:', this.task);
+
+      // First check if the task has the AssignedUser relationship object
+      if (this.task.AssignedUser) {
+        console.log('Found AssignedUser object:', this.task.AssignedUser);
+        return this.task.AssignedUser.username || this.task.AssignedUser.email;
+      }
+
+      // Fallback to finding user by ID in projectUsers
+      if (!userId) return 'Unassigned';
+      
+      const user = this.projectUsers.find(u => {
+        console.log('Comparing user:', u.id, 'with target:', userId, 'types:', typeof u.id, typeof userId);
+        return u.id === userId || u.id === parseInt(userId) || parseInt(u.id) === parseInt(userId);
+      });
+      
+      console.log('Found user for assigned:', user);
+      return user ? (user.username || user.email) : `Unknown User (ID: ${userId})`;
+    },
+
+    getCreatorName(userId) {
+      console.log('Getting creator name for ID:', userId, 'type:', typeof userId);
+      console.log('Available users:', this.projectUsers);
+      console.log('Task object:', this.task);
+
+      // First check if the task has the Creator relationship object
+      if (this.task.Creator) {
+        console.log('Found Creator object:', this.task.Creator);
+        return this.task.Creator.username || this.task.Creator.email;
+      }
+
+      // Fallback to finding user by ID in projectUsers
+      if (!userId) return 'Unknown Creator';
+      
+      const user = this.projectUsers.find(u => {
+        console.log('Comparing user:', u.id, 'with target:', userId, 'types:', typeof u.id, typeof userId);
+        return u.id === userId || u.id === parseInt(userId) || parseInt(u.id) === parseInt(userId);
+      });
+      
+      console.log('Found user for creator:', user);
+      return user ? (user.username || user.email) : `Unknown Creator (ID: ${userId})`;
+    },
+    
     canEditComment(comment) {
       // User can edit if they have edit permission AND are the author of the comment
       if (!this.canEdit) return false;
@@ -161,8 +260,65 @@ export default {
   <div v-if="isVisible" class="comments-overlay" @click="closeComments" @keydown.esc="closeComments">
     <div class="comments-panel" @click.stop @mousedown.stop>
       <div class="comments-header">
-        <h3>Task Comments</h3>
+        <h3>Task Details & Comments</h3>
         <button @click="closeComments" class="close-btn" type="button">&times;</button>
+      </div>
+
+      <!-- Task Information Section -->
+      <div class="task-details">
+        <div class="task-id-display">
+          <span class="task-id-label">Task ID:</span>
+          <span class="task-id-value">#{{ task.id }}</span>
+        </div>
+
+        <div class="task-field">
+          <label class="field-label">Title:</label>
+          <div class="field-value task-title">{{ task.title }}</div>
+        </div>
+
+        <div class="task-field">
+          <label class="field-label">Description:</label>
+          <div class="field-value task-description">{{ task.description }}</div>
+        </div>
+
+        <div class="task-fields-row">
+          <div class="task-field">
+            <label class="field-label">Status:</label>
+            <div :class="['field-value', 'task-status', `status-${task.status}`]">
+              {{ formatStatus(task.status) }}
+            </div>
+          </div>
+
+          <div class="task-field">
+            <label class="field-label">Priority:</label>
+            <div :class="['field-value', 'task-priority', `priority-${task.priority}`]">
+              {{ capitalize(task.priority || 'low') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="task-fields-row">
+          <div class="task-field">
+            <label class="field-label">Assigned to:</label>
+            <div class="field-value">{{ getAssignedUserName(task.assigned_user_id) }}</div>
+          </div>
+
+          <div class="task-field">
+            <label class="field-label">Created by:</label>
+            <div class="field-value">{{ getCreatorName(task.creator_id) }}</div>
+          </div>
+        </div>
+        <div class="task-fields-row">
+          <div class="task-field">
+            <label class="field-label">Created:</label>
+            <div class="field-value">{{ task.createdAt ? formatDate(task.createdAt) : 'Not available' }}</div>
+          </div>
+
+          <div class="task-field">
+            <label class="field-label">Last Updated:</label>
+            <div class="field-value">{{ task.updatedAt ? formatDate(task.updatedAt) : 'Not available' }}</div>
+          </div>
+        </div>
       </div>
 
       <div class="comments-content">
@@ -195,12 +351,12 @@ export default {
                 <button @click="deleteComment(comment.id)" class="delete-btn">🗑️ Delete</button>
               </div>
             </div>
-          </div>       
+          </div>
         </div>
         <div v-if="canEdit" class="add-comment">
           <textarea v-model="newComment" placeholder="Write a comment..." class="comment-input" rows="3"
             @keydown.ctrl.enter="addComment"></textarea>
-            <button @click="addComment" :disabled="!newComment.trim()" class="add-comment-btn">
+          <button @click="addComment" :disabled="!newComment.trim()" class="add-comment-btn">
             💬 Add Comment
           </button>
 
@@ -235,14 +391,16 @@ export default {
   background: white;
   border-radius: 12px;
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 700px;
+  max-height: 90vh;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   transform: scale(1);
   transition: transform 0.2s ease-out;
   z-index: 10000;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .comments-header {
@@ -263,32 +421,153 @@ export default {
 .close-btn {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
   border: 2px solid rgba(102, 102, 102, 0.2);
-  font-size: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 1.2rem;
   color: #666;
-  padding: 0;
-  width: 36px;
-  height: 36px;
+  transition: all 0.3s ease;
+  font-weight: bold;
+  min-width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .close-btn:hover {
-  background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%);
-  color: #e74c3c;
-  border-color: rgba(231, 76, 60, 0.3);
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  border-color: #e74c3c;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+/* Task Details Styles */
+.task-details {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fffe 0%, #ffffff 100%);
+  border-bottom: 1px solid rgba(67, 206, 162, 0.15);
+  max-height: 30vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.task-id-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(67, 206, 162, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #43cea2;
+}
+
+.task-id-label {
+  font-weight: 600;
+  color: #185a9d;
+  font-size: 0.9rem;
+}
+
+.task-id-value {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: #43cea2;
+  font-size: 1rem;
+}
+
+.task-field {
+  margin-bottom: 1rem;
+}
+
+.field-label {
+  display: block;
+  font-weight: 600;
+  color: #185a9d;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.field-value {
+  background: rgba(245, 247, 250, 0.8);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid rgba(67, 206, 162, 0.3);
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.task-title {
+  font-weight: 600;
+  color: #185a9d;
+  font-size: 1rem;
+}
+
+.task-description {
+  min-height: 2.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.task-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Status and Priority Colors */
+.status-pending {
+  color: #f9a825 !important;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(249, 168, 37, 0.1) 0%, rgba(249, 168, 37, 0.05) 100%) !important;
+  border-left-color: #f9a825 !important;
+}
+
+.status-in_progress,
+.status-in-progress {
+  color: #185a9d !important;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(24, 90, 157, 0.1) 0%, rgba(24, 90, 157, 0.05) 100%) !important;
+  border-left-color: #185a9d !important;
+}
+
+.status-completed {
+  color: #43cea2 !important;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(67, 206, 162, 0.1) 0%, rgba(67, 206, 162, 0.05) 100%) !important;
+  border-left-color: #43cea2 !important;
+}
+
+.priority-high {
+  color: #e74c3c !important;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%) !important;
+  border-left-color: #e74c3c !important;
+}
+
+.priority-medium {
+  color: #f9a825 !important;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(249, 168, 37, 0.1) 0%, rgba(249, 168, 37, 0.05) 100%) !important;
+  border-left-color: #f9a825 !important;
+}
+
+.priority-low {
+  color: #43cea2 !important;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(67, 206, 162, 0.1) 0%, rgba(67, 206, 162, 0.05) 100%) !important;
+  border-left-color: #43cea2 !important;
 }
 
 .comments-content {
   padding: 1.5rem;
-  max-height: 60vh;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  max-height: 50vh;
 }
 
 .loading,
@@ -511,5 +790,27 @@ export default {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .comments-panel {
+    max-width: 95vw;
+    margin: 0.5rem;
+  }
+
+  .task-fields-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .comments-content {
+    max-height: 35vh;
+  }
+
+  .task-details,
+  .comments-content {
+    padding: 1rem;
+  }
 }
 </style>

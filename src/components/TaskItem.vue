@@ -1,10 +1,12 @@
 <script>
 import TaskComments from './TaskComments.vue';
+import EditTaskModal from './EditTaskModal.vue';
 
 export default {
   name: 'TaskItem',
   components: {
     TaskComments,
+    EditTaskModal,
   },
   props: {
     task: {
@@ -19,21 +21,20 @@ export default {
       type: Array,
       default: () => [],
     },
+    showRemoveButton: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
       showComments: false,
-      isEditing: false,
-      editedTask: {
-        title: '',
-        description: '',
-        priority: '',
-        status: '',
-        assigned_user_id: null
-      }
+      showEditModal: false,
+      isDragging: false,
+      isDragStart: false,
     };
   },
- methods: {
+  methods: {
     formatStatus(status) {
       if (status === 'pending') return 'Pending';
       if (status === 'in_progress' || status === 'in-progress') return 'In Progress';
@@ -44,7 +45,9 @@ export default {
     capitalize(str) {
       if (!str) return '';
       return str.charAt(0).toUpperCase() + str.slice(1);
-    },    getAssignedUserName(userId) {
+    },
+
+    getAssignedUserName(userId) {
       if (!userId) return 'Unassigned';
       const user = this.projectUsers.find(u => u.id === userId);
       return user ? (user.username || user.email) : 'Unknown User';
@@ -59,56 +62,75 @@ export default {
       this.showComments = true;
     },
 
-    closeComments() {
-      this.showComments = false;
-    },
-    
-    editTask() {
-      if (!this.canEdit) return;
-      
-      this.isEditing = true;
-      this.editedTask = {
-        title: this.task.title,
-        description: this.task.description,
-        priority: this.task.priority || '',
-        status: this.task.status || 'pending',
-        assigned_user_id: this.task.assigned_user_id || null
-      };
-    },
+    handleCardClick(event) {
+      // Only open comments if not clicking on interactive elements and not dragging
+      const target = event.target;
+      const isInteractiveElement = target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.closest('select') ||
+        target.closest('button') ||
+        target.closest('.custom-select-wrapper') ||
+        target.closest('.remove-task-btn');
 
-    async saveTask() {
-      try {
-        const updatedTask = {
-          id: this.task.id,
-          title: this.editedTask.title,
-          description: this.editedTask.description,
-          priority: this.editedTask.priority || null,
-          status: this.editedTask.status,
-          assigned_user_id: this.editedTask.assigned_user_id || null
-        };
-
-        this.$emit('task-updated', updatedTask);
-        this.isEditing = false;
-      } catch (error) {
-        console.error('Error updating task:', error);
+      // Don't open comments if dragging or if clicking on interactive elements
+      if (!isInteractiveElement && !this.isDragging) {
+        this.openComments(event);
       }
     },
 
-    cancelEdit() {
-      this.isEditing = false;
-      
-      this.editedTask = {
-        title: '',
-        description: '',
-        priority: '',
-        status: '',
-        assigned_user_id: null
-      };
+    handleMouseDown(event) {
+      // Mark that we might be starting a drag
+      this.isDragStart = true;
+      this.isDragging = false;
+
+      // Don't interfere with drag and drop for interactive elements
+      const target = event.target;
+      const isInteractiveElement = target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.closest('select') ||
+        target.closest('button') ||
+        target.closest('.custom-select-wrapper') ||
+        target.closest('.remove-task-btn');
+
+      if (isInteractiveElement) {
+        event.stopPropagation();
+      }
+    },
+
+    handleDragStart(event) {
+      this.isDragging = true;
+      // Allow drag and drop to work normally
+    },
+
+    handleDragEnd() {
+      // Reset drag state after a short delay to prevent click after drag
+      setTimeout(() => {
+        this.isDragging = false;
+        this.isDragStart = false;
+      }, 100);
+    },
+
+    closeComments() {
+      this.showComments = false;
+    },
+
+    editTask() {
+      if (!this.canEdit) return;
+      this.showEditModal = true;
+    },
+
+    closeEditModal() {
+      this.showEditModal = false;
+    },
+
+    handleTaskUpdated(updatedTask) {
+      this.$emit('task-updated', updatedTask);
+      this.closeEditModal();
     },
 
     async updateTaskPriority(newPriority) {
       if (!this.canEdit) return;
-      
+
       try {
         this.$emit('update-priority', this.task.id, newPriority);
       } catch (error) {
@@ -118,7 +140,7 @@ export default {
 
     async updateTaskStatus(newStatus) {
       if (!this.canEdit) return;
-      
+
       try {
         this.$emit('update-status', this.task.id, newStatus);
       } catch (error) {
@@ -140,119 +162,87 @@ export default {
 </script>
 
 <template>
-  <div class="task-card">    
+  <div class="task-card" @click="handleCardClick" @mousedown="handleMouseDown" @dragstart="handleDragStart"
+    @dragend="handleDragEnd">
+    <!-- Remove button (X) - only shown in slot content context -->
+    <button v-if="showRemoveButton" @click="$emit('remove-task')" class="remove-task-btn" title="Remove from card"
+      @mousedown.stop @dragstart.prevent>
+      ×
+    </button>
+
     <!-- Normal task view -->
-    <div v-if="!isEditing || !canEdit">
-      <div class="task-header">
-        <span class="task-title">Title: {{ task.title }}</span>
-        <span class="task-id">#ID: {{ task.id }}</span>
-      </div>
-      <div class="task-desc">Description: {{ task.description }}</div>
-      <div class="task-info">       
-        <span class="task-status">
-          <strong>Status:</strong>
-          <select v-if="canEdit" :value="task.status || 'pending'" @change="updateTaskStatus($event.target.value)"
-            :class="['inline-select', 'status-select', `status-${task.status}`]">
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
-          <span v-else :class="`status-${task.status}`">
-            {{ formatStatus(task.status) }}
-          </span>
-        </span>
-        <span class="task-priority">
-          <strong>Priority:</strong>
-          <select 
-            v-if="canEdit"
-            :value="task.priority || 'low'" 
-            @change="updateTaskPriority($event.target.value)"
-            :class="['inline-select', 'priority-select', `priority-${task.priority}`]"
-          >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-          <span v-else :class="`priority-${task.priority}`">
-            {{ capitalize(task.priority || 'low') }}
-          </span>
-        </span>
-        <span class="task-assigned">
-          <strong>Assigned to:</strong> <select v-if="canEdit" :value="task.assigned_user_id || ''"
-            @change="updateTaskAssignedUser($event.target.value || null)" class="inline-select assigned-select">
-            <option value="">Unassigned</option>            <option v-for="user in projectUsers" :key="user.id" :value="user.id">
-              {{ user.username || user.email }}
-            </option>
-          </select>
-          <span v-else class="assigned-user">
-            {{ getAssignedUserName(task.assigned_user_id) }}
-          </span>
-        </span>
-      </div>
-      <div class="task-actions">
-        <button @click="openComments($event)" class="comments-btn" title="View comments" @mousedown.stop
-          @dragstart.prevent>
-          💬
-        </button>
-        <button v-if="canEdit" @click="editTask" class="edit-btn" title="Edit task">
-          ✏️
-        </button>
-      </div>    
-    </div> <!-- Edit form -->
-    <div v-else-if="isEditing && canEdit" class="edit-form">
-      <div class="task-header">
-        <span class="task-id">#ID: {{ task.id }}</span>
-      </div>
-      <div class="form-group">
-        <label>Title:</label>
-        <input v-model="editedTask.title" type="text" class="form-input" placeholder="Task title" required />
-      </div>
-
-      <div class="form-group">
-        <label>Description:</label>
-        <textarea v-model="editedTask.description" class="form-textarea" placeholder="Task description" rows="3"
-          required></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Priority:</label>
-          <select v-model="editedTask.priority" :class="['form-select', `priority-${editedTask.priority}`]">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Status:</label>
-          <select v-model="editedTask.status" :class="['form-select', `status-${editedTask.status}`]">
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Assigned to:</label>
-          <select v-model="editedTask.assigned_user_id" class="form-select">
-            <option :value="null">Unassigned</option>            <option v-for="user in projectUsers" :key="user.id" :value="user.id">
-              {{ user.username || user.email }}
-            </option>
-          </select>
-        </div>
-      </div>
-      <div class="edit-actions">
-        <button @click="saveTask" class="save-btn"
-          :disabled="!editedTask.title.trim() || !editedTask.description.trim()">
-          💾 Save
-        </button>
-        <button @click="cancelEdit" class="cancel-btn">
-          ❌ Cancel
-        </button>
-      </div>    
+    <div class="task-header">
+      <span class="task-title">Title: {{ task.title }}</span>
+      <span class="task-id">#ID: {{ task.id }}</span>
     </div>
-    <!-- Use Teleport to render modal at body level to avoid z-index issues -->
+    <div class="task-desc">Description: {{ task.description }}</div>
+    <div class="task-info">
+      <span class="task-status">
+        <strong>Status:</strong>
+        <div v-if="canEdit" class="custom-select-wrapper">
+          <select :value="task.status || 'pending'" @change="updateTaskStatus($event.target.value)"
+            :class="['custom-select', 'status-select', `status-${task.status}`]">
+            <option value="pending" class="status-option-pending">🟡 Pending</option>
+            <option value="in_progress" class="status-option-progress">🔵 In Progress</option>
+            <option value="completed" class="status-option-completed">🟢 Completed</option>
+          </select>
+        </div>
+        <span v-else :class="`status-${task.status}`">
+          {{ formatStatus(task.status) }}
+        </span>
+      </span>
+      <span class="task-priority">
+        <strong>Priority:</strong>
+        <div v-if="canEdit" class="custom-select-wrapper">
+          <select :value="task.priority || 'low'" @change="updateTaskPriority($event.target.value)"
+            :class="['custom-select', 'priority-select', `priority-${task.priority}`]">
+            <option value="low" class="priority-option-low">🟢 Low</option>
+            <option value="medium" class="priority-option-medium">🟡 Medium</option>
+            <option value="high" class="priority-option-high">🔴 High</option>
+          </select>
+        </div>
+        <span v-else :class="`priority-${task.priority}`">
+          {{ capitalize(task.priority || 'low') }}
+        </span>
+      </span>
+      <span class="task-assigned">
+        <strong>Assigned to:</strong>
+        <select v-if="canEdit" :value="task.assigned_user_id || ''"
+          @change="updateTaskAssignedUser($event.target.value || null)" class="inline-select assigned-select">
+          <option value="">Unassigned</option>
+          <option v-for="user in projectUsers" :key="user.id" :value="user.id">
+            {{ user.username || user.email }}
+          </option>
+        </select>
+        <span v-else class="assigned-user">
+          {{ getAssignedUserName(task.assigned_user_id) }}
+        </span>
+      </span>
+    </div>
+
+    <div class="task-actions">
+      <button v-if="canEdit" @click="editTask" class="action-btn edit-btn" title="Edit task" @mousedown.stop
+        @dragstart.prevent>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        <span>Edit</span>
+      </button>
+      <div class="click-hint">
+        <span>💬 Click anywhere to view details & comments</span>
+      </div>
+    </div>
+
+    <!-- Slot for additional content (like remove button) -->
+    <slot></slot>
+
+    <!-- Use Teleport to render modals at body level to avoid z-index issues -->
     <Teleport to="body">
-      <TaskComments :task-id="task.id" :is-visible="showComments" :can-edit="canEdit" @close="closeComments" />
+      <TaskComments :task-id="task.id" :task="task" :project-users="projectUsers" :is-visible="showComments"
+        :can-edit="canEdit" @close="closeComments" />
+      <EditTaskModal :is-visible="showEditModal" :task="task" :project-users="projectUsers"
+        @task-updated="handleTaskUpdated" @close="closeEditModal" />
     </Teleport>
   </div>
 </template>
@@ -275,6 +265,37 @@ export default {
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.remove-task-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 2;
+  line-height: 1;
+}
+
+.task-card:hover .remove-task-btn {
+  opacity: 1;
+}
+
+.remove-task-btn:hover {
+  background: rgba(231, 76, 60, 0.2);
+  transform: scale(1.1);
 }
 
 .task-card::before {
@@ -369,53 +390,60 @@ export default {
   border-top: 1px solid rgba(67, 206, 162, 0.15);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.comments-btn {
-  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
-  color: white;
-  border: none;
-  padding: 0.5rem;
+.action-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  color: #185a9d;
+  border: 1px solid rgba(67, 206, 162, 0.3);
+  padding: 0.5rem 0.75rem;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   transition: all 0.3s ease;
-  min-width: 36px;
-  height: 36px;
-  box-shadow: 0 2px 8px rgba(24, 90, 157, 0.2);
+  min-height: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover {
+  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
+  color: white;
+  border-color: #43cea2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.3);
+}
+
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.click-hint {
+  flex: 1;
+  text-align: right;
+}
+
+.click-hint span {
+  font-size: 0.75rem;
+  color: #999;
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .comments-btn:hover {
-  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(24, 90, 157, 0.3);
-}
-
-.edit-btn {
-  background: linear-gradient(135deg, #f9a825 0%, #f57c00 100%);
-  color: white;
-  border: none;
-  padding: 0.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  min-width: 36px;
-  height: 36px;
-  box-shadow: 0 2px 8px rgba(249, 168, 37, 0.2);
+  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
+  border-color: #185a9d;
 }
 
 .edit-btn:hover {
-  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(249, 168, 37, 0.3);
+  background: linear-gradient(135deg, #f9a825 0%, #f57c00 100%);
+  border-color: #f9a825;
 }
 
 /* Enhanced status and priority colors */
@@ -450,124 +478,6 @@ export default {
   font-weight: 600;
 }
 
-/* Edit form styles */
-.edit-form {
-  padding: 0.75rem 0;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 8px;
-  margin: 0.5rem 0;
-}
-
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-.form-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #185a9d;
-  font-size: 0.9rem;
-  letter-spacing: 0.3px;
-}
-
-.form-input,
-.form-textarea,
-.form-select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid rgba(67, 206, 162, 0.2);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-  background: white;
-  box-sizing: border-box;
-}
-
-.form-input:focus,
-.form-textarea:focus,
-.form-select:focus {
-  outline: none;
-  border-color: #43cea2;
-  box-shadow: 0 0 0 3px rgba(67, 206, 162, 0.1);
-  transform: translateY(-1px);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(67, 206, 162, 0.15);
-}
-
-.save-btn {
-  background: linear-gradient(135deg, #43cea2 0%, #369870 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  flex: 1;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.2);
-}
-
-.save-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #185a9d 0%, #14486d 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(67, 206, 162, 0.3);
-}
-
-.save-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.cancel-btn {
-  background: linear-gradient(135deg, #666 0%, #555 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  flex: 1;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(102, 102, 102, 0.2);
-}
-
-.cancel-btn:hover {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 102, 102, 0.3);
-}
-
 .task-actions {
   display: flex;
   align-items: center;
@@ -600,47 +510,89 @@ export default {
   transform: translateY(-1px);
 }
 
+/* Custom select wrapper for better styling */
+.custom-select-wrapper {
+  margin-left: 0.75rem;
+}
+
+.custom-select {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid rgba(67, 206, 162, 0.2);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.8rem;
+  padding-right: 2rem;
+}
+
+.custom-select:hover {
+  border-color: #43cea2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(67, 206, 162, 0.15);
+}
+
+.custom-select:focus {
+  outline: none;
+  border-color: #185a9d;
+  box-shadow: 0 0 0 3px rgba(24, 90, 157, 0.1);
+  transform: translateY(-1px);
+}
+
 .status-select {
-  min-width: 110px;
+  min-width: 120px;
 }
 
 .priority-select {
-  min-width: 90px;
+  min-width: 100px;
 }
 
 .assigned-select {
   min-width: 120px;
 }
 
-/* Enhanced status-based coloring for select options */
+/* Enhanced status-based coloring for select options with emojis */
+.status-option-pending,
 .status-select option[value="pending"] {
-  color: #f9a825;
-  background: rgba(249, 168, 37, 0.1);
+  color: #f9a825 !important;
+  background-color: rgba(249, 168, 37, 0.1) !important;
 }
 
+.status-option-progress,
 .status-select option[value="in_progress"] {
-  color: #185a9d;
-  background: rgba(24, 90, 157, 0.1);
+  color: #185a9d !important;
+  background-color: rgba(24, 90, 157, 0.1) !important;
 }
 
+.status-option-completed,
 .status-select option[value="completed"] {
-  color: #43cea2;
-  background: rgba(67, 206, 162, 0.1);
+  color: #43cea2 !important;
+  background-color: rgba(67, 206, 162, 0.1) !important;
 }
 
+.priority-option-high,
 .priority-select option[value="high"] {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c !important;
+  background-color: rgba(231, 76, 60, 0.1) !important;
 }
 
+.priority-option-medium,
 .priority-select option[value="medium"] {
-  color: #f9a825;
-  background: rgba(249, 168, 37, 0.1);
+  color: #f9a825 !important;
+  background-color: rgba(249, 168, 37, 0.1) !important;
 }
 
+.priority-option-low,
 .priority-select option[value="low"] {
-  color: #43cea2;
-  background: rgba(67, 206, 162, 0.1);
+  color: #43cea2 !important;
+  background-color: rgba(67, 206, 162, 0.1) !important;
 }
 
 /* Dynamic coloring for selected status values */
@@ -687,101 +639,6 @@ export default {
   font-weight: 600;
 }
 
-/* Dynamic coloring for form selects */
-.form-select.status-pending {
-  color: #f9a825;
-  background: linear-gradient(135deg, rgba(249, 168, 37, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(249, 168, 37, 0.4);
-  font-weight: 600;
-}
-
-.form-select.status-in_progress {
-  color: #185a9d;
-  background: linear-gradient(135deg, rgba(24, 90, 157, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(24, 90, 157, 0.4);
-  font-weight: 600;
-}
-
-.form-select.status-completed {
-  color: #43cea2;
-  background: linear-gradient(135deg, rgba(67, 206, 162, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(67, 206, 162, 0.4);
-  font-weight: 600;
-}
-
-.form-select.priority-high {
-  color: #e74c3c;
-  background: linear-gradient(135deg, rgba(231, 76, 60, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(231, 76, 60, 0.4);
-  font-weight: 700;
-}
-
-.form-select.priority-medium {
-  color: #f9a825;
-  background: linear-gradient(135deg, rgba(249, 168, 37, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(249, 168, 37, 0.4);
-  font-weight: 600;
-}
-
-.form-select.priority-low {
-  color: #43cea2;
-  background: linear-gradient(135deg, rgba(67, 206, 162, 0.08) 0%, #ffffff 100%);
-  border-color: rgba(67, 206, 162, 0.4);
-  font-weight: 600;
-}
-
-/* Colored option styling for form selects */
-.form-select option {
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-/* Priority option colors */
-.form-select option[value="high"] {
-  color: #e74c3c;
-  background-color: rgba(231, 76, 60, 0.1);
-  font-weight: 700;
-}
-
-.form-select option[value="medium"] {
-  color: #f9a825;
-  background-color: rgba(249, 168, 37, 0.1);
-  font-weight: 600;
-}
-
-.form-select option[value="low"] {
-  color: #43cea2;
-  background-color: rgba(67, 206, 162, 0.1);
-  font-weight: 600;
-}
-
-/* Status option colors */
-.form-select option[value="pending"] {
-  color: #f9a825;
-  background-color: rgba(249, 168, 37, 0.1);
-  font-weight: 600;
-}
-
-.form-select option[value="in_progress"] {
-  color: #185a9d;
-  background-color: rgba(24, 90, 157, 0.1);
-  font-weight: 600;
-}
-
-.form-select option[value="completed"] {
-  color: #43cea2;
-  background-color: rgba(67, 206, 162, 0.1);
-  font-weight: 600;
-}
-
-/* Default option styling */
-.form-select option[value=""] {
-  color: #666;
-  background-color: #ffffff;
-  font-style: italic;
-}
-
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .task-card {
@@ -800,15 +657,6 @@ export default {
 
   .task-info {
     gap: 0.5rem;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .edit-actions {
-    flex-direction: column;
   }
 
   .inline-select {

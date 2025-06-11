@@ -737,7 +737,7 @@ export default {
       if (!this.project?.User) return 'Unknown Owner';
       return this.project.User.username || this.project.User.email || 'Unknown Owner';
     },
-    
+
     getMemberRole(member) {
       if (!member) return 'Member';
 
@@ -894,16 +894,13 @@ export default {
           :canCreate="canCreate" :canEdit="canEdit" @card-dragstart="(card, event) => onCardDragStart(card, idx, event)"
           @card-drop="(card, event) => onCardDrop(idx, event)" @card-dragend="onDragEnd" @task-drop="onTaskDropOnCard"
           @drag-enter="onDragEnter" @drag-leave="onDragLeave" @add-task="handleAddTaskFromCard">
-
           <task-item v-for="(task, taskIdx) in card.Tasks" :key="task.id" :task="task" :can-edit="canEdit"
             :project-users="projectUsers" class="task-in-card" :draggable="canModifyTasksAndCards"
+            :show-remove-button="canModifyTasksAndCards"
             @dragstart="(e) => onDragStart(task, taskIdx, card.id, e)" @dragend="onDragEnd"
             @task-updated="handleTaskUpdate" @update-priority="handleUpdateTaskPriority"
-            @update-status="handleUpdateTaskStatus" @update-assigned-user="handleUpdateTaskAssignedUser">
-            <button v-if="canModifyTasksAndCards" @click="removeTaskFromCardHandler(task.id, card.id)"
-              class="remove-from-card-btn">
-              Remove from card
-            </button>
+            @update-status="handleUpdateTaskStatus" @update-assigned-user="handleUpdateTaskAssignedUser"
+            @remove-task="removeTaskFromCardHandler(task.id, card.id)">
           </task-item>
         </card-item>
 
@@ -1424,21 +1421,6 @@ export default {
 .task-in-card[dragging="true"] {
   opacity: 0.6;
   border: 2px dashed #43cea2;
-}
-
-.remove-from-card-btn {
-  padding: 0.3rem 0.5rem;
-  font-size: 0.8rem;
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 0.5rem;
-}
-
-.remove-from-card-btn:hover {
-  background: #e63946;
 }
 
 .unassigned-task {
