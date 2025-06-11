@@ -21,9 +21,14 @@ const closeSidebar = () => {
         <i :class="isSidebarOpen ? 'bi bi-chevron-left' : 'bi bi-chevron-right'"></i>
       </button>
       <nav>
+        
         <RouterLink to="/projects" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-kanban"></i>
           <span v-if="isSidebarOpen">View Projects</span>
+        </RouterLink>
+        <RouterLink to="/my-tasks" class="sidebar-icon" @click="closeSidebar">
+          <i class="bi bi-check2-square"></i>
+          <span v-if="isSidebarOpen">My Tasks</span>
         </RouterLink>
         <RouterLink to="/settings" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-gear"></i>
@@ -38,8 +43,11 @@ const closeSidebar = () => {
 
     <header class="topbar d-none d-md-flex">
       <nav class="nav-bar">
-        <RouterLink to="/projects" class="nav-btn">
+         <RouterLink to="/projects" class="nav-btn">
           <i class="bi bi-kanban"></i> View Projects
+        </RouterLink>
+        <RouterLink to="/my-tasks" class="nav-btn">
+          <i class="bi bi-check2-square"></i> My Tasks
         </RouterLink>
         <RouterLink to="/settings" class="nav-btn">
           <i class="bi bi-gear"></i> Settings

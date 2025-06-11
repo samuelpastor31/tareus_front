@@ -5,12 +5,14 @@ import LoginView from "../views/LoginView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import ProjectsList from "../views/ProjectsList.vue";
 import ProjectView from "../views/ProjectView.vue";
+import MyTasks from "../views/MyTasks.vue";
 
 const routes = [
   { path: "/", name: "Login", component: LoginView },
   { path: "/register", name: "Register", component: RegisterView },
   { path: "/projects", name: "Projects", component: ProjectsList },
   { path: "/project/:id/tasks", name: "ProjectTasks", component: ProjectView },
+  { path: "/my-tasks", name: "MyTasks", component: MyTasks },
   { path: "/about", name: "About", component: About },
   { path: "/settings", name: "Settings", component: Settings },
 ];

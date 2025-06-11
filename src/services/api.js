@@ -61,6 +61,7 @@ export default class ApiClient {
 
   tasks() {
     return {
+      getMyTasks: () => apiClient.get("/tasks"),
       getTasks: (projectId) => apiClient.get(`/projects/${projectId}/tasks`),
       getTask: (id) => apiClient.get("/tasks/" + id),
       addTask: (projectId, task) =>

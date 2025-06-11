@@ -55,6 +55,11 @@ export default {
         document.body.style.overflow = '';
       }
     },
+    taskId(newVal) {
+      if (newVal && this.isVisible) {
+        this.loadComments();
+      }
+    },
   },
   methods: {
  async loadComments() {
@@ -71,9 +76,15 @@ export default {
       }
     },
 
+    
+    
     async addComment() {
-      if (!this.canEdit) return;
-      if (!this.newComment.trim()) return;
+      if (!this.canEdit) {
+        return;
+      }
+      if (!this.newComment.trim()) {
+        return;
+      }
 
       try {
         const newCommentData = await this.store.addComment(this.taskId, this.newComment.trim());
@@ -135,11 +146,8 @@ export default {
       this.commentToDelete = null;
     },
 
-
     formatDate(dateString) {
       if (!dateString) return 'N/A';
-
-      console.log('Formatting date:', dateString, 'type:', typeof dateString);
 
       try {
         let date;
@@ -152,13 +160,11 @@ export default {
           // Already a Date object
           date = dateString;
         } else {
-          console.warn('Unexpected date format:', dateString);
           return 'Invalid Date Format';
         }
 
         // Check if the date is valid
         if (isNaN(date.getTime())) {
-          console.warn('Invalid date after parsing:', dateString);
           return 'Invalid Date';
         }
 
@@ -170,7 +176,6 @@ export default {
           minute: '2-digit'
         });
 
-        console.log('Successfully formatted date:', formatted);
         return formatted;
       } catch (error) {
         console.error('Error formatting date:', error, 'Input:', dateString);
@@ -191,61 +196,52 @@ export default {
     },
     
     getAssignedUserName(userId) {
-      console.log('Getting assigned user name for ID:', userId, 'type:', typeof userId);
-      console.log('Available users:', this.projectUsers);
-      console.log('Task object:', this.task);
-
       // First check if the task has the AssignedUser relationship object
       if (this.task.AssignedUser) {
-        console.log('Found AssignedUser object:', this.task.AssignedUser);
         return this.task.AssignedUser.username || this.task.AssignedUser.email;
       }
 
       // Fallback to finding user by ID in projectUsers
       if (!userId) return 'Unassigned';
-      
+
       const user = this.projectUsers.find(u => {
-        console.log('Comparing user:', u.id, 'with target:', userId, 'types:', typeof u.id, typeof userId);
         return u.id === userId || u.id === parseInt(userId) || parseInt(u.id) === parseInt(userId);
       });
-      
-      console.log('Found user for assigned:', user);
+
       return user ? (user.username || user.email) : `Unknown User (ID: ${userId})`;
     },
 
     getCreatorName(userId) {
-      console.log('Getting creator name for ID:', userId, 'type:', typeof userId);
-      console.log('Available users:', this.projectUsers);
-      console.log('Task object:', this.task);
-
       // First check if the task has the Creator relationship object
       if (this.task.Creator) {
-        console.log('Found Creator object:', this.task.Creator);
         return this.task.Creator.username || this.task.Creator.email;
       }
 
       // Fallback to finding user by ID in projectUsers
       if (!userId) return 'Unknown Creator';
-      
+
       const user = this.projectUsers.find(u => {
-        console.log('Comparing user:', u.id, 'with target:', userId, 'types:', typeof u.id, typeof userId);
         return u.id === userId || u.id === parseInt(userId) || parseInt(u.id) === parseInt(userId);
       });
-      
-      console.log('Found user for creator:', user);
+
       return user ? (user.username || user.email) : `Unknown Creator (ID: ${userId})`;
     },
-    
+
     canEditComment(comment) {
       // User can edit if they have edit permission AND are the author of the comment
       if (!this.canEdit) return false;
-      
+
       const currentUserId = localStorage.getItem('user_id');
       return currentUserId && comment.user_id && parseInt(currentUserId) === parseInt(comment.user_id);
     },
 
     closeComments() {
       this.$emit('close');
+    }
+  },
+  mounted() {
+    if (this.isVisible && this.taskId) {
+      this.loadComments();
     }
   },
 

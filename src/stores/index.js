@@ -8,6 +8,7 @@ export const useDataStore = defineStore("data", {
   state: () => ({
     projects: [],
     tasks: [],
+    myTasks: [],
     users: [],
     currentProject: null,
     userReport: null,
@@ -74,6 +75,21 @@ export const useDataStore = defineStore("data", {
         return this.tasks;
       } catch (error) {
         console.error("Error fetching tasks:", error);
+        return [];
+      }
+    },
+
+    async fetchMyTasks() {
+      try {
+        const response = await apiClient.tasks().getMyTasks();
+        if (Array.isArray(response.data)) {
+          this.myTasks = response.data;
+        } else {
+          this.myTasks = [];
+        }
+        return this.myTasks;
+      } catch (error) {
+        console.error("Error fetching my tasks:", error);
         return [];
       }
     },
