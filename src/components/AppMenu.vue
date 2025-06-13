@@ -24,17 +24,23 @@ const closeSidebar = () => {
         
         <RouterLink to="/projects" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-kanban"></i>
-          <span v-if="isSidebarOpen">View Projects</span>
+          <span v-if="isSidebarOpen">Projects</span>
         </RouterLink>
         <RouterLink to="/my-tasks" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-check2-square"></i>
           <span v-if="isSidebarOpen">My Tasks</span>
         </RouterLink>
+        <RouterLink to="/reports" class="sidebar-icon" @click="closeSidebar">
+          <i class="bi bi-bar-chart"></i>
+          <span v-if="isSidebarOpen">Reports</span>
+        </RouterLink>
         <RouterLink to="/settings" class="sidebar-icon" @click="closeSidebar">
           <i class="bi bi-gear"></i>
           <span v-if="isSidebarOpen">Settings</span>
         </RouterLink>
-        <RouterLink to="/" class="sidebar-icon" @click.prevent="() => { auth.logout(); closeSidebar(); }">
+        <RouterLink to="/" class="sidebar-icon" @click.prevent="() => { auth.logout(); 
+                                                                        closeSidebar(); 
+                                                                        }">
           <i class="bi bi-box-arrow-left"></i>
           <span v-if="isSidebarOpen">Log out</span>
         </RouterLink>
@@ -43,11 +49,15 @@ const closeSidebar = () => {
 
     <header class="topbar d-none d-md-flex">
       <nav class="nav-bar">
-         <RouterLink to="/projects" class="nav-btn">
-          <i class="bi bi-kanban"></i> View Projects
+         
+        <RouterLink to="/projects" class="nav-btn">
+          <i class="bi bi-kanban"></i> Projects
         </RouterLink>
         <RouterLink to="/my-tasks" class="nav-btn">
           <i class="bi bi-check2-square"></i> My Tasks
+        </RouterLink>
+        <RouterLink to="/reports" class="nav-btn">
+          <i class="bi bi-bar-chart"></i> Reports
         </RouterLink>
         <RouterLink to="/settings" class="nav-btn">
           <i class="bi bi-gear"></i> Settings

@@ -48,6 +48,7 @@ export default {
       itemToDelete: null,
       deleteType: null, // 'task' or 'card'
       // Modal state for AddTaskForm
+      showAddTaskModal: false,
       selectedCardId: null,
       selectedCardName: '',
       // Project details dropdown
@@ -408,6 +409,8 @@ export default {
       if (this.deleteType === "task" && this.itemToDelete) {
         this.deleteTask(this.itemToDelete.id)
           .then(() => {
+            // Update noTasks state
+            this.noTasks = this.tasksList.length === 0;
             this.resetDragState();
           })
           .catch(() => {
@@ -417,6 +420,8 @@ export default {
       } else if (this.deleteType === "card" && this.itemToDelete) {
         this.deleteCard(this.itemToDelete.id)
           .then(() => {
+            // Update noCards state
+            this.noCards = this.cardsList.length === 0;
             this.resetDragState();
           })
           .catch(() => {
@@ -767,6 +772,23 @@ export default {
     },
   },
 
+  watch: {
+    // Watch tasksList to update noTasks state
+    tasksList: {
+      handler(newTasks) {
+        this.noTasks = newTasks.length === 0;
+      },
+      immediate: true
+    },
+    // Watch cardsList to update noCards state
+    cardsList: {
+      handler(newCards) {
+        this.noCards = newCards.length === 0;
+      },
+      immediate: true
+    }
+  },
+
   async mounted() {
     this.projectId = this.$route.params.id;
 
@@ -868,12 +890,25 @@ export default {
         <div class="empty-icon">📋</div>
         <h3>Welcome to your new project!</h3>
         <p>This project is empty. Get started by creating your first task or organizing with cards.</p>
+        
+        <!-- Add Card Form for empty projects (shows above buttons) -->
+        <div v-if="canCreate && isAddingCard" class="empty-add-card-form">
+          <add-card-form :is-adding="isAddingCard" @show-form="showAddCardForm" @cancel="cancelAddCard"
+            @add-card="
+              (cardData) => {
+                this.newCardName = cardData.name;
+                this.newCardDescription = cardData.description;
+                this.addCard();
+              }
+            " />
+        </div>
+
         <div class="empty-actions">
           <button v-if="canCreate" @click="showAddTaskModal = true" class="primary-action-btn">
             <span class="btn-icon">➕</span>
             Create Your First Task
           </button>
-          <button v-if="canCreate" @click="showAddCardForm" class="secondary-action-btn">
+          <button v-if="canCreate && !isAddingCard" @click="showAddCardForm" class="secondary-action-btn">
             <span class="btn-icon">🗂️</span>
             Create a Card
           </button>
@@ -903,14 +938,13 @@ export default {
             @remove-task="removeTaskFromCardHandler(task.id, card.id)">
           </task-item>
         </card-item>
-
         <!-- Add Card Form Component -->
-        <add-card-form v-if="canCreate" :is-adding="isAddingCard" @show-form="showAddCardForm" @cancel="cancelAddCard"
+        <add-card-form v-if="canCreate && cardsList.length > 0" :is-adding="isAddingCard" @show-form="showAddCardForm" @cancel="cancelAddCard"
           @add-card="
             (cardData) => {
-              newCardName = cardData.name;
-              newCardDescription = cardData.description;
-              addCard();
+              this.newCardName = cardData.name;
+              this.newCardDescription = cardData.description;
+              this.addCard();
             }
           " />
       </div>
@@ -1298,6 +1332,20 @@ export default {
   margin-bottom: 2rem;
 }
 
+.empty-add-card-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
 .empty-actions {
   display: flex;
   flex-direction: column;
@@ -1387,6 +1435,20 @@ export default {
 
 .cards-container {
   margin-top: 2rem;
+}
+
+.empty-cards-container {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.empty-cards-container {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
 }
 
 .cards-row {

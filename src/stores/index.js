@@ -15,6 +15,7 @@ export const useDataStore = defineStore("data", {
     projectReport: null,
     cards: [],
     loggedIn: localStorage.getItem("loggedIn") === "true",
+    userProfile: null,
   }),
   actions: {
     
@@ -42,7 +43,7 @@ export const useDataStore = defineStore("data", {
 
     async fetchProjectReport(projectId) {
       try {
-        const response = await apiClient.getProjectReport(projectId);
+        const response = await apiClient.reports().getProjectReport(projectId);
         this.projectReport = response.data;
         return this.projectReport;
       } catch (error) {
@@ -53,7 +54,7 @@ export const useDataStore = defineStore("data", {
 
     async fetchUserReport(userId) {
       try {
-        const response = await apiClient.getUserReport(userId);
+        const response = await apiClient.reports().getUserReport(userId);
         this.userReport = response.data;
         return this.userReport;
       } catch (error) {
@@ -400,6 +401,7 @@ export const useDataStore = defineStore("data", {
       this.users = [];
       this.userReport = null;
       this.projectReport = null;
+      this.userProfile = null;
     },
 
     async fetchUsers() {
@@ -644,6 +646,29 @@ export const useDataStore = defineStore("data", {
         return response.data;
       } catch (error) {
         console.error("Error removing user from project:", error);
+        throw error;
+      }
+    },
+
+    // User profile methods
+    async fetchUserProfile() {
+      try {
+        const response = await apiClient.users().getUserProfile();
+        this.userProfile = response.data;
+        return this.userProfile;
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        throw error;
+      }
+    },
+
+    async updateUserProfile(profileData) {
+      try {
+        const response = await apiClient.users().updateUserProfile(profileData);
+        this.userProfile = response.data.user;
+        return response.data;
+      } catch (error) {
+        console.error("Error updating user profile:", error);
         throw error;
       }
     },

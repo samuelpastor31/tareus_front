@@ -29,7 +29,7 @@ export default {
         this.$router.push(`/project/${this.project.id}/tasks`);
       } else {
         // Optionally show a message or do nothing
-        console.warn('No tienes permisos para ver este proyecto');
+        console.warn('You do not have permission to view this project');
       }
     },
     formatDate(dateStr) {
@@ -55,7 +55,7 @@ export default {
   ]" @click="canViewProject ? goToProject() : null">
     <div v-if="!canViewProject" class="no-access-overlay">
       <i class="material-icons">lock</i>
-      <span>Sin acceso</span>
+      <span>No access</span>
     </div>
 
     <h3 class="title">Project: ({{ project.id }})</h3>

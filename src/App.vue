@@ -2,7 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router';
 import AppMenu from './components/AppMenu.vue';
 import { useDataStore } from './stores/index.js';
-import tareusLogo from '/vite.svg';
+import tareusLogo from './assets/tareus.png';
 
 export default {
   components: {
@@ -28,7 +28,6 @@ export default {
   <div class="tareus-app-bg">
     <header class="tareus-header">
       <img :src="tareusLogo" alt="Tareus Logo" />
-      <h1>Tareus</h1>
     </header>
     <div class="app-menu-bar">
       <div class="app-menu-inner">
@@ -66,19 +65,9 @@ export default {
   box-sizing: border-box;
 }
 .tareus-header img {
-  width: 54px;
-  height: 54px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(24,90,157,0.10);
-  background: #fff;
+  width: 240px;
+  height: 80px;
   padding: 0.2rem;
-}
-.tareus-header h1 {
-  font-size: 2.1rem;
-  font-weight: bold;
-  color: #185a9d;
-  margin: 0.5rem 0 0 0;
-  letter-spacing: 1px;
 }
 
 .app-menu-bar {
@@ -91,7 +80,7 @@ export default {
 }
 .app-menu-inner {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1600px;
   box-sizing: border-box;
   display: flex;
   justify-content: center;
@@ -107,7 +96,7 @@ export default {
   margin-left: 0;
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  max-width: 1600px;
   width: 100%;
   align-self: center;
   box-sizing: border-box;
@@ -123,7 +112,7 @@ footer {
   box-sizing: border-box;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1600px) {
   .app-menu-inner,
   .tareus-main-content {
     max-width: 100vw;

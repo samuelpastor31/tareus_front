@@ -110,6 +110,8 @@ export default class ApiClient {
   users() {
     return {
       getUsers: () => apiClient.get("/users"),
+      getUserProfile: () => apiClient.get("/users/profile"),
+      updateUserProfile: (profileData) => apiClient.put("/users/profile", profileData),
     };
   }
 }

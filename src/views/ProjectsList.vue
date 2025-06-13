@@ -327,14 +327,14 @@ export default {
 
 .projects-container {
   padding: 1rem;
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
 
 .projects-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
@@ -342,6 +342,7 @@ export default {
   width: 100%;
   flex-wrap: wrap;
   gap: 1rem;
+  position: relative;
 }
 
 .projects-header h2 {
@@ -349,6 +350,7 @@ export default {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
+  text-align: center;
   flex: 1;
   min-width: 0;
 }
@@ -369,6 +371,8 @@ export default {
   box-shadow: 0 4px 16px rgba(24, 90, 157, 0.15);
   white-space: nowrap;
   flex-shrink: 0;
+  position: absolute;
+  right: 1rem;
 }
 
 .create-btn:hover {
@@ -441,7 +445,7 @@ export default {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(67, 206, 162, 0.2);
   width: 95%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -459,7 +463,7 @@ export default {
   position: relative;
   flex: 1;
   min-width: 200px;
-  max-width: calc(100% - 140px);
+  max-width: calc(100% - 10px);
 }
 
 .search-icon {
@@ -472,7 +476,7 @@ export default {
 }
 
 .search-input {
-  width: 92%;
+  width: 95%;
   padding: 0.7rem 1rem 0.7rem 3rem;
   border: 2px solid rgba(67, 206, 162, 0.3);
   border-radius: 8px;
@@ -522,7 +526,7 @@ export default {
   transition: all 0.3s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  width: 130px;
+  width: 180px;
   justify-content: center;
   opacity: 1 !important;
   visibility: visible !important;
@@ -738,13 +742,13 @@ export default {
   .search-input-container {
     min-width: 180px;
     /* Adjusted for shorter container */
-    max-width: calc(100% - 130px);
-    /* Account for smaller button */
+    max-width: calc(100% - 170px);
+    /* Account for larger button */
   }
 
   .filter-toggle-btn {
-    min-width: 120px;
-    /* Slightly smaller button */
+    min-width: 160px;
+    /* Larger button for medium screens */
     font-size: 0.9rem;
     padding: 0.7rem 1rem;
   }

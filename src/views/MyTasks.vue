@@ -351,7 +351,7 @@ export default {
 <style scoped>
 .my-tasks-container {
     padding: 2rem;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;

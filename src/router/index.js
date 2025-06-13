@@ -6,6 +6,7 @@ import RegisterView from "../views/RegisterView.vue";
 import ProjectsList from "../views/ProjectsList.vue";
 import ProjectView from "../views/ProjectView.vue";
 import MyTasks from "../views/MyTasks.vue";
+import Reports from "../views/Reports.vue";
 
 const routes = [
   { path: "/", name: "Login", component: LoginView },
@@ -13,6 +14,7 @@ const routes = [
   { path: "/projects", name: "Projects", component: ProjectsList },
   { path: "/project/:id/tasks", name: "ProjectTasks", component: ProjectView },
   { path: "/my-tasks", name: "MyTasks", component: MyTasks },
+  { path: "/reports", name: "Reports", component: Reports },
   { path: "/about", name: "About", component: About },
   { path: "/settings", name: "Settings", component: Settings },
 ];
